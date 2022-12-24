@@ -67,7 +67,7 @@ async def voice_message_handler(message: Message):
 
 @dp.message_handler()
 async def process_message(message: types.Message):
-    await save_message(message.text)
+    save_message(embed_formatting(message))
 #    print(list(message))
 
 # Functions
@@ -75,12 +75,12 @@ async def handle_file(file: File, file_name: str, path: str):
     Path(f"{path}").mkdir(parents=True, exist_ok=True)
     await bot.download_file(file_path=file.file_path, destination=f"{path}/{file_name}")
 
-async def save_message(note) -> None:
+def save_message(note) -> None:
     curr_date = dt.now().strftime('%Y-%m-%d')
     curr_time = dt.now().strftime('%H:%M:%S')
     note_name = os.path.join(inbox_path, note_prefix + curr_date + '.md')
     note_body = check_if_task(check_if_negative(note))
-    note_text = f'### {curr_time}\n{note_body}\n\n'
+    note_text = f'#### [[{curr_date}]] {curr_time}\n{note_body}\n\n'
     with open(note_name, 'a', encoding='UTF-8') as f:
         f.write(note_text)
 
@@ -97,6 +97,47 @@ def check_if_negative(note_body) -> str:
         if keyword.lower() in note_body.lower(): is_negative = True
     if is_negative: note_body += '\n#негатив'
     return note_body
+
+def embed_formatting(message) -> str:
+    note = message['text']
+    formats = {'bold': '**',
+                'italic': '_',
+                'underline': '==',
+                'strikethrough': '~~',
+                'spoiler': '',
+                'code': '`',
+    }
+    formatted_note = ''
+    tail = 0
+    try:
+        for entity in message['entities']:
+            format = entity['type']
+            start_pos = entity['offset']
+            end_pos = start_pos + entity['length']
+            # добавляем неформатированный кусок сообщения, если он есть
+            if start_pos > tail:
+                formatted_note += note[tail:start_pos]
+                tail = start_pos
+            # обрабатываем простые entity с симметричным форматированием
+            if format in formats:
+                format_code = formats[format]
+                formatted_note += format_code + note[start_pos:end_pos] + format_code
+            # обрабатываем сложные entity с несимметричным форматированием
+            elif format == 'pre':
+                formatted_note += '```\n' + note[start_pos:end_pos] + '\n```'
+            elif format == 'mention':
+                formatted_note += f'[{note[start_pos:end_pos]}](https://t.me/{note[start_pos+1:end_pos]})'
+            elif format == 'text_link':
+                formatted_note += f'[{note[start_pos:end_pos]}]({entity["url"]})'
+            # Не сделано (нет смысла) для url, hashtag, cashtag, bot_command, email, phone_number
+            # Не сделано (непонятно, как сделать) для spoiler, text_mention, custom_emoji
+            else:
+                formatted_note += note[start_pos:end_pos]
+            tail = end_pos
+#        print(list(message['entities']))
+    except:
+        formatted_note = note
+    return formatted_note
 
 async def stt(audio_file_path) -> str:
     import whisper
@@ -133,5 +174,5 @@ async def on_startup(__):
     pass
 
 if __name__ == '__main__':
-    executor.start_polling(dp, skip_updates=True, relax = 1, on_startup=on_startup)
+    executor.start_polling(dp, skip_updates=False, relax = 1, on_startup=on_startup)
 # То, что ниже, никогда не запускается
