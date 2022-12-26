@@ -127,6 +127,7 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+config.py
 analyze_chat.py
 app.py
 simplesend.py
