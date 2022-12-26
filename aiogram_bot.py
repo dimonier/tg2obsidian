@@ -26,6 +26,7 @@ import config
 API_TOKEN = config.token
 
 inbox_path = r'D:\Obsidian-Дима'
+photo_path = r'D:\Obsidian-Дима\files'
 note_prefix = 'Telegram-'
 task_keywords = {'задач', 'сделать', 'todo'}
 negative_keywords = {'негатив'}
@@ -62,8 +63,32 @@ async def voice_message_handler(message: Message):
     file_full_path = os.path.join(path, voice.file_id + '.ogg')
     note_stt = await stt(file_full_path)
     await message.answer(note_stt)
-    await save_message(note_stt)
+    save_message(note_stt)
     os.remove(file_full_path)
+
+@dp.message_handler(content_types=[ContentType.PHOTO])
+async def handle_docs_photo(message: Message):
+#    print(list(message))
+    photo = message.photo[-1]
+#    print(photo)
+    file_name = photo.file_id + '.jpg'
+    print(f'Got photo: {file_name}')
+    photo_file = await photo.get_file()
+    await handle_file(file=photo_file, file_name=file_name, path=photo_path)
+    # Работает, но непонятно, как получить имя сохраненного файла
+    # destination = await bot.download_file_by_id(file_id = photo['file_id'], destination_dir = photo_path, make_dirs = True)
+    # print(list(destination))
+
+    # file_name = str(destination['name']).split('/')[-1]
+    # file_full_path = os.path.join(photo_path, file_name)
+    # await message.photo[-1].download(destination_file = file_full_path)
+    # for photo in message.photo:
+    photo_message = {
+        'text': message.caption,
+        'entities': message.caption_entities,
+        }
+    photo_and_caption = f'![[{file_name}]]\n{embed_formatting(photo_message)}'
+    save_message(photo_and_caption)
 
 @dp.message_handler()
 async def process_message(message: types.Message):
@@ -75,7 +100,7 @@ async def handle_file(file: File, file_name: str, path: str):
     Path(f"{path}").mkdir(parents=True, exist_ok=True)
     await bot.download_file(file_path=file.file_path, destination=f"{path}/{file_name}")
 
-def save_message(note) -> None:
+def save_message(note: str) -> None:
     curr_date = dt.now().strftime('%Y-%m-%d')
     curr_time = dt.now().strftime('%H:%M:%S')
     note_name = os.path.join(inbox_path, note_prefix + curr_date + '.md')
@@ -104,38 +129,45 @@ def embed_formatting(message) -> str:
                 'italic': '_',
                 'underline': '==',
                 'strikethrough': '~~',
-                'spoiler': '',
                 'code': '`',
     }
     formatted_note = ''
     tail = 0
     try:
+        if len(message['entities']) == 0: formatted_note = note
         for entity in message['entities']:
             format = entity['type']
             start_pos = entity['offset']
             end_pos = start_pos + entity['length']
-            # добавляем неформатированный кусок сообщения, если он есть
+            # добавляем неформатированный кусок сообщения до этого entity, если он есть
             if start_pos > tail:
                 formatted_note += note[tail:start_pos]
                 tail = start_pos
-            # обрабатываем простые entity с симметричным форматированием
+            # обрабатываем простые entity с симметричной разметкой форматирования
             if format in formats:
                 format_code = formats[format]
-                formatted_note += format_code + note[start_pos:end_pos] + format_code
-            # обрабатываем сложные entity с несимметричным форматированием
+                formatted_note += format_code + note[start_pos:end_pos].strip() + format_code
+                # восстанавливаем пробел после формтированного фрагмента, если он стоял до закрывающей разметки
+                if note[end_pos-1] == ' ': formatted_note += ' '
+            # обрабатываем сложные entity с несимметричной разметкой
             elif format == 'pre':
                 formatted_note += '```\n' + note[start_pos:end_pos] + '\n```'
             elif format == 'mention':
                 formatted_note += f'[{note[start_pos:end_pos]}](https://t.me/{note[start_pos+1:end_pos]})'
             elif format == 'text_link':
                 formatted_note += f'[{note[start_pos:end_pos]}]({entity["url"]})'
-            # Не сделано (нет смысла) для url, hashtag, cashtag, bot_command, email, phone_number
-            # Не сделано (непонятно, как сделать) для spoiler, text_mention, custom_emoji
+            # Не сделана (нет смысла) обработка форматов url, hashtag, cashtag, bot_command, email, phone_number
+            # Не сделана (непонятно, как визуализировать в Obsidian) обработка форматов для spoiler,
+            #            text_mention, custom_emoji
             else:
                 formatted_note += note[start_pos:end_pos]
             tail = end_pos
 #        print(list(message['entities']))
+        # добавляем неформатированный кусок из конца сообщения, если он есть
+        if len(message['entities']) > 0 and tail < len(note):
+            formatted_note += note[tail:]
     except:
+        # В сообщении нет форматирования
         formatted_note = note
     return formatted_note
 
