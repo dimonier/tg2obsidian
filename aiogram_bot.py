@@ -68,6 +68,7 @@ async def voice_message_handler(message: Message):
 
 @dp.message_handler(content_types=[ContentType.PHOTO])
 async def handle_docs_photo(message: Message):
+    log_message(message)
 #    print(list(message))
     photo = message.photo[-1]
 #    print(photo)
@@ -92,6 +93,7 @@ async def handle_docs_photo(message: Message):
 
 @dp.message_handler()
 async def process_message(message: types.Message):
+    log_message(message)
     save_message(embed_formatting(message))
 #    print(list(message))
 
@@ -99,6 +101,13 @@ async def process_message(message: types.Message):
 async def handle_file(file: File, file_name: str, path: str):
     Path(f"{path}").mkdir(parents=True, exist_ok=True)
     await bot.download_file(file_path=file.file_path, destination=f"{path}/{file_name}")
+
+def log_message(message):
+    curr_date = dt.now().strftime('%Y-%m-%d')
+    curr_time = dt.now().strftime('%H:%M:%S')
+    file_name = 'messages-' + curr_date + '.md'
+    with open(file_name, 'a', encoding='UTF-8') as f:
+        print(curr_time + '  ', list(message), file = f)
 
 def save_message(note: str) -> None:
     curr_date = dt.now().strftime('%Y-%m-%d')
