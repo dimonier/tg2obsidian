@@ -88,13 +88,17 @@ async def handle_docs_photo(message: Message):
         'text': message.caption,
         'entities': message.caption_entities,
         }
-    photo_and_caption = f'![[{file_name}]]\n{embed_formatting(photo_message)}'
+    forward_info = get_forward_info(message)
+    photo_and_caption = f'{forward_info}![[{file_name}]]\n{embed_formatting(photo_message)}'
     save_message(photo_and_caption)
 
 @dp.message_handler()
 async def process_message(message: types.Message):
     log_message(message)
-    save_message(embed_formatting(message))
+    message_body = embed_formatting(message)
+    forward_info = get_forward_info(message)
+    save_message(forward_info + message_body)
+
 #    print(list(message))
 
 # Functions
@@ -102,12 +106,49 @@ async def handle_file(file: File, file_name: str, path: str):
     Path(f"{path}").mkdir(parents=True, exist_ok=True)
     await bot.download_file(file_path=file.file_path, destination=f"{path}/{file_name}")
 
+def get_forward_info(m: Message) -> str:
+    forward_info = ''
+    post = 'post'
+    user = ''
+    chat = ''
+    forwarded = False
+    if m.forward_from_chat:
+        forwarded = True
+        # Todo сделать универсальный парсер chat id. Сейчас наверняка работает только для каналов
+        chat_id = str(m.forward_from_chat.id)[4:]
+        if m.forward_from_chat.username:
+            chat_name = f'[{m.forward_from_chat.title}](https://t.me/{m.forward_from_chat.username})'
+        else:
+            chat_name = f'{m.forward_from_chat.title}'
+        chat = f'from {m.forward_from_chat.type} {chat_name}'
+
+        if m.forward_from_message_id:
+            msg_id = str(m.forward_from_message_id)
+            post = f'[post](https://t.me/c/{chat_id}/{msg_id})'
+
+    if m.forward_from:
+        forwarded = True
+        real_name = ' '.join([m.forward_from.first_name, m.forward_from.last_name])
+        user = f'by [{real_name}](https://t.me/{m.forward_from.username})'
+    elif m.forward_sender_name:
+        forwarded = True
+        user = f'by {m.forward_sender_name}'
+
+    forward_info = ' '.join([item for item in [post, chat, user] if len(item) > 0])
+
+    if forwarded:
+        result = f'**Forwarded {forward_info}**\n'
+    else:
+        result = ''
+
+    return result
+
 def log_message(message):
     curr_date = dt.now().strftime('%Y-%m-%d')
     curr_time = dt.now().strftime('%H:%M:%S')
     file_name = 'messages-' + curr_date + '.md'
     with open(file_name, 'a', encoding='UTF-8') as f:
-        print(curr_time + '  ', list(message), file = f)
+        print(curr_time + '  ', list(message), '\n', file = f)
 
 def save_message(note: str) -> None:
     curr_date = dt.now().strftime('%Y-%m-%d')
