@@ -1,3 +1,5 @@
+*.bat
+messages*.txt
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -127,7 +129,6 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
-config.py
 analyze_chat.py
 app.py
 simplesend.py
