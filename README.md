@@ -1,4 +1,6 @@
 # tg2obsidian
+This program uses Telegram's free bot functionality in order to save messages from Telegram group in Obsidian files.
+The program is intended to be run locally, from the computer where the Obsidian files reside.
 
 Этот Telegram-бот передает сообщения из Telegram в хранилище Obsidian.
 Он предназначен для запуска на локальном компьютере, где расположено хранилище Obsidian.
