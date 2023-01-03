@@ -139,7 +139,7 @@ def log_message(message):
 def save_message(note: str) -> None:
     curr_date = dt.now().strftime('%Y-%m-%d')
     curr_time = dt.now().strftime('%H:%M:%S')
-    note_name = os.path.join(config.inbox_path, config.note_prefix + curr_date + '.md')
+    note_name = os.path.join(config.inbox_path, config.note_prefix + curr_date + config.note_postfix + '.md')
     note_body = check_if_task(check_if_negative(note))
     note_text = f'#### [[{curr_date}]] {curr_time}\n{note_body}\n\n'
     with open(note_name, 'a', encoding='UTF-8') as f:

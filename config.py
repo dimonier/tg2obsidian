@@ -17,8 +17,12 @@ format_messages = True
 recognize_voice = False
 
 # Префикс имени файла заметки. К нему будет добавлена дата в формате ГГГГ-ММ-ДД
-# Со значением по умолчанию итоговое имя файла будет иметь формат Telegram-2023-01-02.md
+# Со значением по умолчанию итоговое имя файла будет иметь формат Telegram-2023-01-02_Notes.md
 note_prefix = 'Telegram-'
+
+# The string that will be added to the name after the note_prefix and the date in YYYY-MM-DD format
+# If all the default config values are left be, the final name of the files will be Telegram-2023-01-02_Notes.md
+note_postfix = '_Notes'
 
 # Если в тексте сообщения встретится одно из указанных значений, сообщение будет преобразовано в задачу.
 task_keywords = {'задач', 'сделать', 'todo'}
