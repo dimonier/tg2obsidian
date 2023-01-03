@@ -1,39 +1,39 @@
-# Bot token, получите у @botfather
+# Bot token issued by @botfather
 token = 'xxxxxxxx:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
 
-# Путь к папке, в которой нужно создавать новые заметки
+# Path to the folder where new notes should be created
 inbox_path = r'C:\your-obsidian-vault'
 
-# Путь к папке, в которую нужно складывать полученные картинки
+# Path to the folder where received pictures should be stored
 photo_path = r'C:\your-obsidian-vault\attachments'
 
-# Если True, в сообщениях будет сохраняться форматирование (bold, italic, ccылки и т.п.)
-# Если False, в сообщениях не будет сохраняться форматирование
+# If True, messages (including picture captions) will retain formatting (bold, italic, links, etc.)
+# If False, messages will be saved as plain text. This also removes inline links.
 format_messages = True
 
-# Если True, голосовые сообщения будут распознаваться.
-# Для этого должны быть установлены Whisper и FFMPEG
-# Если False, голосовые сообщения не будут распознаваться.
+# If True, voice messages will be recognized to text.
+# This requires Whisper and FFMPEG to be installed on the machine where the script is running.
+# If False, voice messages will not be recognized nor stored.
 recognize_voice = False
 
-# Префикс имени файла заметки. К нему будет добавлена дата в формате ГГГГ-ММ-ДД
-# Со значением по умолчанию итоговое имя файла будет иметь формат Telegram-2023-01-02_Notes.md
+# Note file name prefix and postfix which surround the date in YYYY-MM-DD format
+# With the default config values, full note name would be like Telegram-2023-01-02_Notes.md
+# To omit either part (or both), assign a blank value: note_postfix = ''
 note_prefix = 'Telegram-'
-
-# The string that will be added to the name after the note_prefix and the date in YYYY-MM-DD format
-# If all the default config values are left be, the final name of the files will be Telegram-2023-01-02_Notes.md
 note_postfix = '_Notes'
 
-# Если в тексте сообщения встретится одно из указанных значений, сообщение будет преобразовано в задачу.
+# If one of the specified substrings is found in the message text (case insensitive),
+# the message will be converted to a Markdown task like the following:
+# - [ ] Сделать одно важное дело
+# To turn this off, specify task_keywords = {}
 task_keywords = {'задач', 'сделать', 'todo'}
 
-# Если в тексте сообщения встретится одно из указанных значений, к сообщению будет добавлен указанный далее тег
+# If one of the keywords is found in the message text, the specified tag will be added to the message
+# To turn this off, specify negative_keywords = {}
 negative_keywords = {'негатив', 'печал'}
-
-# Тег для добавления к тексту, в котором обнаружено ключевое слово
 negative_tag = '#негатив'
 
-# Идентификатор чата, который нужно читать. Сообщения в остальных чатах будут игнорироваться.
-# Бот сообщает идентификатор чата при получении команды /start
-# Этот параметр пока не используется
+# The ID of the chat the bot should read. Messages from other chats will be ignored.
+# When the bot receives the /start command, it replies with the ID of the chat.
+# This setting is not in effect yet.
 # my_chat_id = -xxxxxxxxx
