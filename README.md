@@ -1,61 +1,25 @@
 # tg2obsidian
-This program uses Telegram's free bot functionality in order to save messages from Telegram group in Obsidian files.
-The program is intended to be run locally, from the computer where the Obsidian files reside.
 
-Этот Telegram-бот передает сообщения из Telegram в хранилище Obsidian.
-Он предназначен для запуска на локальном компьютере, где расположено хранилище Obsidian.
+This program ("Bot") uses Telegram's free bot functionality in order to save messages from a Telegram group to the [Obsidian](https://obsidian.md) vault on your local computer.
 
-## Возможности
+The Markdown markup used will also work for most [other programs](https://www.markdownguide.org/tools/) that work with local Markdown files.
 
-- Все сообщения группируются по датам - на одну дату создаётся одна заметка.
-- Каждое сообщение в заметке имеет заголовок с отметкой даты и времени.
-- Сохраняется форматирование сообщений.
-- Для пересланных сообщений добавляется информация об источнике сообщения.
-- Картинки сохраняются в хранилище и встраиваются в заметку.
-- Есть возможность преобразовывать заметки с определенными ключевыми словами в задачу.
-- Есть возможность тегировать заметки с определенными ключевыми словами.
-- Есть возможность распознавания речи из заметок.
+The Bot is designed to run locally on the computer where the Obsidian files are located.
 
-## Установка и настройка
+This readme is also available [in Russian](README.ru.md) with more details.
+The details in English will appear here soon.
 
-1. Установите [Python](https://python.org) 3.10+ и требуемые зависимости:
+## Features
 
-```shell
-pip install -r requirements.txt
-```
+## Set up
 
-2. Установите модуль Whisper, если требуется распознавать голосовые сообщения:
+## Usage
 
-```shell
-pip install git+https://github.com/openai/whisper.git
-```
 
-3. Установите скомпилированный [FFMPEG](https://ffmpeg.org/download.html) и добавьте путь к исполняемому файлу (в Windows - ffmpeg.exe) в переменную окружения path.
-Перейдите в папку с данным скриптом и убедитесь, что ffmpeg.exe запускается из неё.
+## Known issues
 
-4. Создайте своего бота при помощи https://t.me/BotFather и скопируйте его токен.
+## Support author
 
-5. Вставьте токен в соответствующую переменную в файле `config.py` и измените остальные параметры требуемым образом.
-
-6. Добавьте созданного выше бота в приватную группу Telegram и отправляйте/пересылайте в эту группу сообщения, которые должны попасть в ваше хранилище Obsidian.
-
-## Использование
-
-Запустите бота:
-```shell
-python tg2obsidian_bot.py
-```
-
-После запуска в папке со скриптом создастся файл `bot.log`, куда будут записываться основные происходящие действия и ошибки.
-
-Кроме того, все входящие сообщения будут записываться в файлы c именем вида `messages-ГГГГ-ММ-ДД.txt` для упрощения отладки и доработки.
-
-## Известные ошибки
-
-1. Если сообщение содержит эмодзи, в нём может съехать форматирование. Если у вас много таких сообщений, можно отключить форматирование в конфиге.
-
-## Благодарность автору
-
-Если вы хотите отблагодарить автора этого проекта, ваши донаты с благодарностью будут приняты здесь: https://pay.cloudtips.ru/p/1f9bf82f
+If you would like to thank the author of this project, your donations will be gratefully accepted here: https://pay.cloudtips.ru/p/1f9bf82f
 
 ![](qrCode.png)
