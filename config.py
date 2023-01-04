@@ -16,10 +16,13 @@ format_messages = True
 # If False, voice messages will not be recognized nor stored.
 recognize_voice = False
 
-# Note file name prefix and postfix which surround the date in YYYY-MM-DD format
-# With the default config values, full note name would be like Telegram-2023-01-02_Notes.md
-# To omit either part (or both), assign a blank value: note_postfix = ''
+# The following set of options define file name of the note where Telegram posts appear.
+# Resulting file name consists of concatenated prefix, date, and postfix.
+# With the default config values, full note name would be like Telegram-2023-01-02_Notes.md.
+# To omit either prefix or postfix (or both), comment out corresponding option with #.
+# To omit the date part and always put new messages in a single static file, comment out note_date option.
 note_prefix = 'Telegram-'
+note_date = True
 note_postfix = '_Notes'
 
 # If one of the specified substrings is found in the message text (case insensitive),

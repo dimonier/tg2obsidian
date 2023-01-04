@@ -142,13 +142,19 @@ def log_message(message):
     log.info(f'Message content saved to {file_name}')
 
 
+def get_note_name(curr_date) -> str:
+    filename_part1 = config.note_prefix if 'note_prefix' in dir(config) else ''
+    filename_part3 = config.note_postfix if 'note_postfix' in dir(config) else ''
+    filename_part2 = curr_date if 'note_date' in dir(config) and config.note_date is True else ''
+    return os.path.join(config.inbox_path, filename_part1 + filename_part2 + filename_part3 + '.md')
+
+
 def save_message(note: str) -> None:
     curr_date = dt.now().strftime('%Y-%m-%d')
     curr_time = dt.now().strftime('%H:%M:%S')
-    note_name = os.path.join(config.inbox_path, config.note_prefix + curr_date + config.note_postfix + '.md')
     note_body = check_if_task(check_if_negative(note))
     note_text = f'#### [[{curr_date}]] {curr_time}\n{note_body}\n\n'
-    with open(note_name, 'a', encoding='UTF-8') as f:
+    with open(get_note_name(curr_date), 'a', encoding='UTF-8') as f:
         f.write(note_text)
 
 def check_if_task(note_body) -> str:
