@@ -9,6 +9,12 @@ The Bot is designed to run locally on the computer where the Obsidian files are 
 This readme is also available [in Russian](README.ru.md) with more details.
 The details in English will appear here soon.
 
+## Use case
+
+- You are typing or recording messages in your personal Telegram group _on the go_
+- Bot receives new messages from Telegram and saves them as Inbox notes in your PKM vault
+- _Afterwards, in a quiet environment_, you process those notes, moving the information from them to appropriate places in your vault
+
 ## Features
 
 ## Set up

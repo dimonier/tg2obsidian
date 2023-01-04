@@ -111,8 +111,14 @@ def get_forward_info(m: Message) -> str:
 
     if m.forward_from:
         forwarded = True
-        real_name = ' '.join([m.forward_from.first_name, m.forward_from.last_name])
-        user = f'by [{real_name}](https://t.me/{m.forward_from.username})'
+        real_name = ''
+        if 'first_name' in m.forward_from: real_name += m.forward_from.first_name
+        if 'last_name' in m.forward_from: real_name += ' ' + m.forward_from.last_name
+        real_name = real_name.strip()
+        if m.forward_from.username:
+            user = f'by [{real_name}](https://t.me/{m.forward_from.username})'
+        else:
+            user = f'by {real_name}'
     elif m.forward_sender_name:
         forwarded = True
         user = f'by {m.forward_sender_name}'
