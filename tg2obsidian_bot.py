@@ -57,7 +57,7 @@ async def voice_message_handler(message: Message):
 @dp.message_handler(content_types=[ContentType.PHOTO])
 async def handle_docs_photo(message: Message):
 #    if message.chat.id != config.my_chat_id: return
-    log.info(f'Received photo message from @{message.from_user.username}')
+    log.info(f'Received photo from @{message.from_user.username}')
     log_message(message)
     photo = message.photo[-1]
     file_name = photo.file_id + '.jpg'
@@ -74,6 +74,27 @@ async def handle_docs_photo(message: Message):
     photo_and_caption = f'{forward_info}![[{file_name}]]\n{embed_formatting(photo_message)}'
     save_message(photo_and_caption)
 
+@dp.message_handler(content_types=[ContentType.DOCUMENT])
+async def handle_doc(message: Message):
+#    if message.chat.id != config.my_chat_id: return
+    file_name = unique_filename(message.document.file_name, config.photo_path)
+    log.info(f'Received document {file_name} from @{message.from_user.username}')
+    log_message(message)
+    print(f'Got document: {file_name}')
+    file = await message.document.get_file()
+#    file_path = file.file_path
+    await handle_file(file=file, file_name=file_name, path=config.photo_path)
+
+    doc_message = {
+        'text': message.caption,
+        'entities': message.caption_entities,
+        }
+
+    forward_info = get_forward_info(message)
+    doc_and_caption = f'{forward_info}[[{file_name}]]\n{embed_formatting(doc_message)}'
+    save_message(doc_and_caption)
+
+
 @dp.message_handler()
 async def process_message(message: types.Message):
 #    if message.chat.id != config.my_chat_id: return
@@ -83,21 +104,22 @@ async def process_message(message: types.Message):
     forward_info = get_forward_info(message)
     save_message(forward_info + message_body)
 
+
 # Functions
 async def handle_file(file: File, file_name: str, path: str):
     Path(f"{path}").mkdir(parents=True, exist_ok=True)
     await bot.download_file(file_path=file.file_path, destination=f"{path}/{file_name}")
 
 def get_forward_info(m: Message) -> str:
-    # Если сообщение переслано, извлекаем из него эту инфу и оформляем со ссылками на источник
+    # If the message is forwarded, extract forward info and make up forward header
     forward_info = ''
-    post = 'post'
+    post = 'message'
     user = ''
     chat = ''
     forwarded = False
     if m.forward_from_chat:
         forwarded = True
-        # Todo сделать универсальный парсер chat id. Сейчас наверняка работает только для каналов
+        # Todo: unversal parser of chat id. Currently works for sure for channels only
         chat_id = str(m.forward_from_chat.id)[4:]
         if m.forward_from_chat.username:
             chat_name = f'[{m.forward_from_chat.title}](https://t.me/{m.forward_from_chat.username})'
@@ -107,7 +129,7 @@ def get_forward_info(m: Message) -> str:
 
         if m.forward_from_message_id:
             msg_id = str(m.forward_from_message_id)
-            post = f'[post](https://t.me/c/{chat_id}/{msg_id})'
+            post = f'[message](https://t.me/c/{chat_id}/{msg_id})'
 
     if m.forward_from:
         forwarded = True
@@ -133,7 +155,7 @@ def get_forward_info(m: Message) -> str:
     return result
 
 def log_message(message):
-    # Занесение сообщения целиком в журнал входящих сообщений для анализа, если что-то пойдёт не так
+    # Saving of the whole message into the incoming message log just in case
     curr_date = dt.now().strftime('%Y-%m-%d')
     curr_time = dt.now().strftime('%H:%M:%S')
     file_name = 'messages-' + curr_date + '.txt'
@@ -172,7 +194,7 @@ def check_if_negative(note_body) -> str:
     return note_body
 
 def embed_formatting(message) -> str:
-    # Если в сообщении есть форматирование, расставляем форматирование в формате Markdown
+    # If the message contains any formatting (inclusing inline links), add corresponding Markdown markup
     note = message['text']
 
     if not config.format_messages:
@@ -192,34 +214,33 @@ def embed_formatting(message) -> str:
             format = entity['type']
             start_pos = entity['offset']
             end_pos = start_pos + entity['length']
-            # добавляем неформатированный кусок сообщения до этого entity, если он есть
+            # Add unformatted piece of text before this entity, if exists
             if start_pos > tail:
                 formatted_note += note[tail:start_pos]
                 tail = start_pos
-            # обрабатываем простые entity с симметричной разметкой форматирования
+            # Process simple entities with symmetrical markup
             if format in formats:
                 format_code = formats[format]
                 formatted_note += format_code + note[start_pos:end_pos].strip() + format_code
-                # восстанавливаем пробел после формтированного фрагмента, если он стоял до закрывающей разметки
+                # Restore space after formatted text if it was placed before the closing markup
                 if note[end_pos-1] == ' ': formatted_note += ' '
-            # обрабатываем сложные entity с несимметричной разметкой
+            # Process complex entities having asymmetrical markup
             elif format == 'pre':
                 formatted_note += '```\n' + note[start_pos:end_pos] + '\n```'
             elif format == 'mention':
                 formatted_note += f'[{note[start_pos:end_pos]}](https://t.me/{note[start_pos+1:end_pos]})'
             elif format == 'text_link':
                 formatted_note += f'[{note[start_pos:end_pos]}]({entity["url"]})'
-            # Не сделана (нет смысла) обработка форматов url, hashtag, cashtag, bot_command, email, phone_number
-            # Не сделана (непонятно, как визуализировать в Obsidian) обработка форматов для spoiler,
-            #            text_mention, custom_emoji
+            # Not processed (makes no sense): url, hashtag, cashtag, bot_command, email, phone_number
+            # Not processed (hard to visualize using Markdown): spoiler, text_mention, custom_emoji
             else:
                 formatted_note += note[start_pos:end_pos]
             tail = end_pos
-        # добавляем неформатированный кусок из конца сообщения, если он есть
+        # Add unformatted trailing piece of text, if exists
         if len(message['entities']) > 0 and tail < len(note):
             formatted_note += note[tail:]
     except:
-        # В сообщении нет форматирования
+        # If the message does not contain any formatting
         formatted_note = note
     return formatted_note
 
@@ -236,7 +257,24 @@ async def stt(audio_file_path) -> str:
 
     return alltext
 
+def unique_filename(file: str, path: str) -> str:
+    """Change file name if file already exists"""
+    # check if file exists
+    if not os.path.exists(os.path.join(path, file)):
+        return file
+    # get file name and extension
+    filename, filext = os.path.splitext(file)
+    # get full file path without extension only
+    filexx = os.path.join(path, filename)
+    # create incrementing variable
+    i = 1
+    # determine incremented filename
+    while os.path.exists(f'{filexx}_{str(i)}{filext}'):
+        # update the incrementing variable
+        i += 1
+    return f'{filename}_{str(i)}{filext}'
+
 if __name__ == '__main__':
     executor.start_polling(dp, skip_updates=False, relax = 1)
 
-# Расположенный ниже код никогда не запускается
+# The code below never runs
