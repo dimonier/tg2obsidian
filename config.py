@@ -1,4 +1,4 @@
-# Bot token issued by @botfather
+# Bot token issued by @botfather (Telegram)
 token = 'xxxxxxxx:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
 
 # Path to the folder where new notes should be created
@@ -19,17 +19,18 @@ recognize_voice = False
 # The following set of options define file name of the note where Telegram posts appear.
 # Resulting file name consists of concatenated prefix, date, and postfix.
 # With the default config values, full note name would be like Telegram-2023-01-02_Notes.md.
-# To omit either prefix or postfix (or both), comment out corresponding option with #.
-# To omit the date part and always put new messages in a single static file, comment out note_date option.
+# To omit either prefix or postfix (or both), comment out corresponding option with # or edit it to be empty.
+# To omit the date part and always put new messages in a single static file, comment out note_date option
+# or edit it to be empty.
 note_prefix = 'Telegram-'
 note_date = True
 note_postfix = '_Notes'
 
 # If one of the specified substrings is found in the message text (case insensitive),
 # the message will be converted to a Markdown task like the following:
-# - [ ] Сделать одно важное дело
+# - [ ] Complete one important task
 # To turn this off, specify task_keywords = {}
-task_keywords = {'задач', 'сделать', 'todo'}
+task_keywords = {'задач', 'сделать', 'todo', 'complete'}
 
 # If one of the keywords is found in the message text, the specified tag will be added to the message
 # To turn this off, specify negative_keywords = {}
