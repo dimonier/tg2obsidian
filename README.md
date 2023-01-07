@@ -57,12 +57,12 @@ python tg2obsidian_bot.py
 - You can keep Bot running indefinitely on a computer or server that is permanently turned on. In this case, it will recognize speech and create/update notes in Obsidian in real time.
 - If you only turn your computer on when you're using it, run Bot directly when you need to get Obsidian messages, and close the program when you've received all the messages.
 
-After launch, Bot creates `bot.log` file in the script folder, where the main actions and errors are logges.
+After launch, Bot creates `bot.log` file in the script folder, where the main actions and errors are logged.
 
 In addition, all incoming messages are recorded to `messages-YYYYY-MM-DD.txt` file in the script folder in order to help debugging the script. They are not necessary for the operation of Bot, so you can safely delete them if needed.
 ## Known issues
 
-1. If a message contains an emoji, formatting position may be inaccurate. If you have a lot of such messages, you can disable formatting in config.
+1. If a message contains both emoji and formatting, positions where the formatting is applied may be inaccurate. If you have a lot of such issues, you can disable formatting in config.
 
 ## Support author
 
