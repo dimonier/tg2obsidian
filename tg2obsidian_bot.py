@@ -95,6 +95,40 @@ async def handle_doc(message: Message):
     save_message(doc_and_caption)
 
 
+@dp.message_handler(content_types=[ContentType.CONTACT])
+async def handle_doc(message: Message):
+#    if message.chat.id != config.my_chat_id: return
+    log.info(f'Received contact from @{message.from_user.username}')
+    log_message(message)
+    print(f'Got contact')
+    contact_note = get_contact_data(message)
+    save_message(contact_note)
+
+
+@dp.message_handler(content_types=[ContentType.LOCATION])
+async def handle_doc(message: Message):
+#    if message.chat.id != config.my_chat_id: return
+    log.info(f'Received location from @{message.from_user.username}')
+    log_message(message)
+    print(f'Got location')
+
+
+@dp.message_handler(content_types=[ContentType.ANIMATION])
+async def handle_doc(message: Message):
+#    if message.chat.id != config.my_chat_id: return
+    log.info(f'Received animation from @{message.from_user.username}')
+    log_message(message)
+    print(f'Got animation')
+
+
+@dp.message_handler(content_types=[ContentType.VIDEO_NOTE])
+async def handle_doc(message: Message):
+#    if message.chat.id != config.my_chat_id: return
+    log.info(f'Received video note from @{message.from_user.username}')
+    log_message(message)
+    print(f'Got video note')
+
+
 @dp.message_handler()
 async def process_message(message: types.Message):
 #    if message.chat.id != config.my_chat_id: return
@@ -273,6 +307,35 @@ def unique_filename(file: str, path: str) -> str:
         # update the incrementing variable
         i += 1
     return f'{filename}_{str(i)}{filext}'
+
+
+def get_contact_data(message: Message) -> str:
+
+    frontmatter_body = ''
+    for field, value in message.contact:
+        if field not in ('vcard', 'user_id'):
+            frontmatter_body += f'{field}: {value}\n'
+
+    note_frontmatter = f'''<!-- YAML front matter -->
+
+---
+{frontmatter_body}
+---
+'''
+
+    fname = message.contact.first_name or ''
+    lname = message.contact.last_name or ''
+    contact_name = f'{fname} {lname}'.strip()
+
+    note_body = f'''<!-- vcard -->
+[[{contact_name}]]
+```vcard
+{message.contact.vcard}
+```
+'''
+
+    return note_frontmatter + note_body
+
 
 if __name__ == '__main__':
     executor.start_polling(dp, skip_updates=False, relax = 1)
