@@ -10,7 +10,7 @@ This readme is also available [in Russian](README.ru.md).
 
 ## Use case
 
-- You are typing or recording messages in your personal Telegram group _on the go_
+- You type, record, or forward messages to your personal Telegram group _on the go_
 - Bot receives new messages from Telegram and saves them as Inbox notes in your PKM vault
 - _Afterwards, in a quiet environment_, you process those notes, moving the information from them to appropriate places in your vault
 
@@ -22,6 +22,7 @@ This readme is also available [in Russian](README.ru.md).
 - For forwarded messages, information about the origin is added.
 - Pictures and files are saved to the vault and embedded in the note.
 - For contacts, YAML front matter and vcard are saved.
+- For locations, relevant links to Google and Yandex maps are created.
 - It is possible to convert notes with certain keywords into a task.
 - It is possible to tag notes with certain keywords.
 - It is possible to recognize speech from the notes. In this case, the Bot sends the recognized text as a response to the original voice message.
