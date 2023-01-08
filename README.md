@@ -21,6 +21,7 @@ This readme is also available [in Russian](README.ru.md).
 - Formatting of messages and captions is preserved.
 - For forwarded messages, information about the origin is added.
 - Pictures and files are saved to the vault and embedded in the note.
+- For contacts, YAML front matter and vcard are saved.
 - It is possible to convert notes with certain keywords into a task.
 - It is possible to tag notes with certain keywords.
 - It is possible to recognize speech from the notes. In this case, the Bot sends the recognized text as a response to the original voice message.
