@@ -101,7 +101,7 @@ async def handle_doc(message: Message):
     log.info(f'Received contact from @{message.from_user.username}')
     log_message(message)
     print(f'Got contact')
-    contact_note = get_contact_data(message)
+    contact_note = await get_contact_data(message)
     save_message(contact_note)
 
 
@@ -111,6 +111,8 @@ async def handle_doc(message: Message):
     log.info(f'Received location from @{message.from_user.username}')
     log_message(message)
     print(f'Got location')
+    location_note = get_location_note(message)
+    save_message(location_note)
 
 
 @dp.message_handler(content_types=[ContentType.ANIMATION])
@@ -309,7 +311,10 @@ def unique_filename(file: str, path: str) -> str:
     return f'{filename}_{str(i)}{filext}'
 
 
-def get_contact_data(message: Message) -> str:
+async def get_contact_data(message: Message) -> str:
+
+    if message.contact.user_id:
+        contact_user  = await get_telegram_username(message.contact.user_id)
 
     frontmatter_body = ''
     for field, value in message.contact:
@@ -329,12 +334,36 @@ def get_contact_data(message: Message) -> str:
 
     note_body = f'''<!-- vcard -->
 [[{contact_name}]]
+Telegram: {contact_user}
 ```vcard
 {message.contact.vcard}
 ```
 '''
 
     return note_frontmatter + note_body
+
+
+async def get_telegram_username(user_id: int) -> str:
+    user_info = await bot.get_chat_member(user_id, user_id)
+    if 'username' in user_info.user:
+        result = f'[@{user_info.user.username}](https://t.me/{user_info.user.username})'
+    else:
+        fname = user_info.user.first_name or ''
+        lname = user_info.user.last_name or ''
+        result = f'{fname} {lname}'.strip()
+
+    return result
+
+
+def get_location_note(message: Message) -> str:
+    lat = message.location.latitude
+    lon = message.location.longitude
+
+    location_note = f'''**Latitude**: {lat}
+**Longitude**: {lon}
+[Google maps](https://www.google.com/maps/search/?api=1&query={lat},{lon}), [Yandex maps](https://yandex.ru/maps/?text={lat}%2C{lon}&z=17)
+'''
+    return location_note
 
 
 if __name__ == '__main__':
