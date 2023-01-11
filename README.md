@@ -61,7 +61,7 @@ python tg2obsidian_bot.py
 
 After launch, Bot creates `bot.log` file in the script folder, where the main actions and errors are logged.
 
-In addition, all incoming messages are recorded to `messages-YYYYY-MM-DD.txt` file in the script folder in order to help debugging the script. They are not necessary for the operation of Bot, so you can safely delete them if needed.
+In addition, all incoming messages are recorded to `messages-YYYY-MM-DD.txt` file in the script folder in order to help debugging the script. They are not necessary for the operation of Bot, so you can safely delete them if needed.
 ## Known issues
 
 1. If a message contains both emoji and formatting, positions where the formatting is applied may be inaccurate. If you have a lot of such issues, you can disable formatting in config.
