@@ -282,7 +282,9 @@ def embed_formatting(message) -> str:
 
 async def stt(audio_file_path) -> str:
     import whisper
-    model = whisper.load_model("medium")
+    model = config.whisper_model if 'whisper_model' in dir(config) else 'medium'
+    model = whisper.load_model(model)
+
     log.info('Audio recognition started')
     result = model.transcribe(audio_file_path, verbose = False, language = 'ru')
     rawtext = ' '.join([segment['text'].strip() for segment in result['segments']])

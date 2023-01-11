@@ -12,9 +12,15 @@ photo_path = r'C:\your-obsidian-vault\attachments'
 format_messages = True
 
 # If True, voice messages will be recognized to text.
-# This requires Whisper and FFMPEG to be installed on the machine where the script is running.
+# This requires Whisper ( https://github.com/openai/whisper ), FFMPEG, Python and PyTorch to be installed
+# on the machine where the script is running. 
 # If False, voice messages will not be recognized nor stored.
 recognize_voice = False
+
+# Whisper speech recognition software's model options and their relative speed and size of DB:
+# tiny (x32, 78MB), base(x16, 145MB), small(x6, 484MB), medium(x2, 1.5GB), large(x1, 3.1GB). 
+# These are general models. English-only models also exist. Check https://github.com/openai/whisper .
+whisper_model = 'medium'
 
 # The following set of options define file name of the note where Telegram posts appear.
 # Resulting file name consists of concatenated prefix, date, and postfix.
