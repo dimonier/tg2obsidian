@@ -38,7 +38,7 @@ async def help(message: types.Message):
     await message.reply(reply_text)
 
 @dp.message_handler(content_types=[ContentType.VOICE])
-async def voice_message_handler(message: Message):
+async def handle_voice_message(message: Message):
 #    if message.chat.id != config.my_chat_id: return
     log.info(f'Received voice message from @{message.from_user.username}')
     if not config.recognize_voice:
@@ -55,12 +55,12 @@ async def voice_message_handler(message: Message):
     os.remove(file_full_path)
 
 @dp.message_handler(content_types=[ContentType.PHOTO])
-async def handle_docs_photo(message: Message):
+async def handle_photo(message: Message):
 #    if message.chat.id != config.my_chat_id: return
     log.info(f'Received photo from @{message.from_user.username}')
     log_message(message)
     photo = message.photo[-1]
-    file_name = photo.file_id + '.jpg'
+    file_name = unique_filename(create_photo_file_name(message), config.photo_path) # or photo.file_id + '.jpg'
     print(f'Got photo: {file_name}')
     photo_file = await photo.get_file()
 
@@ -75,7 +75,7 @@ async def handle_docs_photo(message: Message):
     save_message(photo_and_caption)
 
 @dp.message_handler(content_types=[ContentType.DOCUMENT])
-async def handle_doc(message: Message):
+async def handle_document(message: Message):
 #    if message.chat.id != config.my_chat_id: return
     file_name = unique_filename(message.document.file_name, config.photo_path)
     log.info(f'Received document {file_name} from @{message.from_user.username}')
@@ -96,7 +96,7 @@ async def handle_doc(message: Message):
 
 
 @dp.message_handler(content_types=[ContentType.CONTACT])
-async def handle_doc(message: Message):
+async def handle_contact(message: Message):
 #    if message.chat.id != config.my_chat_id: return
     log.info(f'Received contact from @{message.from_user.username}')
     log_message(message)
@@ -106,7 +106,7 @@ async def handle_doc(message: Message):
 
 
 @dp.message_handler(content_types=[ContentType.LOCATION])
-async def handle_doc(message: Message):
+async def handle_location(message: Message):
 #    if message.chat.id != config.my_chat_id: return
     log.info(f'Received location from @{message.from_user.username}')
     log_message(message)
@@ -116,7 +116,7 @@ async def handle_doc(message: Message):
 
 
 @dp.message_handler(content_types=[ContentType.ANIMATION])
-async def handle_doc(message: Message):
+async def handle_animation(message: Message):
 #    if message.chat.id != config.my_chat_id: return
     log.info(f'Received animation from @{message.from_user.username}')
     log_message(message)
@@ -124,7 +124,7 @@ async def handle_doc(message: Message):
 
 
 @dp.message_handler(content_types=[ContentType.VIDEO_NOTE])
-async def handle_doc(message: Message):
+async def handle_video_note(message: Message):
 #    if message.chat.id != config.my_chat_id: return
     log.info(f'Received video note from @{message.from_user.username}')
     log_message(message)
@@ -200,11 +200,32 @@ def log_message(message):
     log.info(f'Message content saved to {file_name}')
 
 
-def get_note_name(curr_date) -> str:
+def get_note_file_name_parts(curr_date):
     filename_part1 = config.note_prefix if 'note_prefix' in dir(config) else ''
     filename_part3 = config.note_postfix if 'note_postfix' in dir(config) else ''
     filename_part2 = curr_date if 'note_date' in dir(config) and config.note_date is True else ''
-    return os.path.join(config.inbox_path, filename_part1 + filename_part2 + filename_part3 + '.md')
+    return [filename_part1, filename_part2, filename_part3]
+
+def get_note_name(curr_date) -> str:
+    parts = get_note_file_name_parts(curr_date)
+    return os.path.join(config.inbox_path, ''.join(parts) + '.md')
+
+
+def create_photo_file_name(message: Message) -> str:
+    # ToDo: переделать на дату отправки сообщения
+    curr_date = get_curr_date()
+    parts = get_note_file_name_parts(curr_date)
+    # ToDo: добавить в имя файлаusername исходного канала или пользователя
+    # Если присутствует forward_from - оттуда, иначе из from
+
+    # Строим среднюю часть имени без лишних - и _
+    note_name = re.sub("[-_]+", "-", f'{parts[0]}{parts[2]}'.strip('-_'))
+
+    return f'{curr_date}_{note_name}_pic.jpg'
+
+
+def get_curr_date() -> str:
+    return dt.now().strftime('%Y-%m-%d')
 
 
 def save_message(note: str) -> None:
