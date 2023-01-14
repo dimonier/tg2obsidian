@@ -33,10 +33,10 @@ This readme is also available [in Russian](README.ru.md).
 2. install script dependencies:
 
 ```shell
-pip install -r requirements.txt
+pip install aiogram
 ```
 
-3. Install Whisper module if you need voice messages get recognized to text:
+3. Install Whisper module if you need voice messages get recognized to text (you need [git](https://git-scm.com/) installed to be able to do this):
 
 ```shell
 pip install git+https://github.com/openai/whisper.git
@@ -45,11 +45,11 @@ pip install git+https://github.com/openai/whisper.git
 4. Install compiled [FFMPEG](https://ffmpeg.org/download.html) and add the path to the executable (in Windows — ffmpeg.exe) to the `path` environment variable. Go to the folder containing this script and make sure that `ffmpeg.exe` could be started there.
 5. Create your own bot using https://t.me/BotFather
 6. Paste the token received from `@botfather` into the appropriate parameter in `config.py` and change the rest of the parameters in `config.py` as desired.
-7. Add the bot created above to a private Telegram group and make it administrator so it can read messages.
+7. (Optional) Add the bot created above to a private Telegram group and make it administrator so it can read messages.
 
 ## Usage
 
-1. Send or forward to the private Telegram group messages that should go to your Obsidian vault.
+1. Send or forward messages that should go to your Obsidian vault to the private Telegram group or directly to your Telegram bot.
 
 2. Run Bot:
 ```shell.
@@ -59,9 +59,8 @@ python tg2obsidian_bot.py
 - You can keep Bot running indefinitely on a computer or server that is permanently turned on. In this case, it will recognize speech and create/update notes in Obsidian in real time.
 - If you only turn your computer on when you're using it, run Bot directly when you need to get Obsidian messages, and close the program when you've received all the messages.
 
-After launch, Bot creates `bot.log` file in the script folder, where the main actions and errors are logged.
+**Important!** Bot can only retrieve messages for the last 24 hours. Messages sent earlier and not retrieved in a timely manner will not be received by Bot and saved in the vault.
 
-In addition, all incoming messages are recorded to `messages-YYYY-MM-DD.txt` file in the script folder in order to help debugging the script. They are not necessary for the operation of Bot, so you can safely delete them if needed.
 ## Known issues
 
 1. If a message contains both emoji and formatting, positions where the formatting is applied may be inaccurate. If you have a lot of such issues, you can disable formatting in config.
