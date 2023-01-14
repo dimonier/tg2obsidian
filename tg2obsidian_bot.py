@@ -15,8 +15,12 @@ from aiogram.utils import executor
 
 import config
 
-logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.INFO, filename = 'bot.log', encoding = 'UTF-8', datefmt = '%Y-%m-%d %H:%M:%S')
-log = logging.getLogger()
+if 'log_level' in dir(config) and config.log_level >= 1:
+    basic_log = True
+    logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.INFO, filename = 'bot.log', encoding = 'UTF-8', datefmt = '%Y-%m-%d %H:%M:%S')
+    log = logging.getLogger()
+else:
+    basic_log = False
 
 bot = Bot(token = config.token)
 dp = Dispatcher(bot)
@@ -24,7 +28,7 @@ dp = Dispatcher(bot)
 # Handlers
 @dp.message_handler(CommandStart())
 async def send_welcome(message: types.Message):
-    log.info(f'Starting chat with the user @{message.from_user.username} ({message.from_user.first_name} {message.from_user.last_name}, user_id = {message.from_id}), chat_id = {message.chat.id} ({message.chat.title})')
+    log_msg(f'Starting chat with the user @{message.from_user.username} ({message.from_user.first_name} {message.from_user.last_name}, user_id = {message.from_id}), chat_id = {message.chat.id} ({message.chat.title})')
     reply_text = f'Hello {message.from_user.full_name}!\n\nI`m a private bot, I save messages from a private Telegram group to Obsidian inbox.\n\nYour Id: {message.from_id}\nThis chat Id: {message.chat.id}\n'
     await message.reply(reply_text)
 
@@ -40,9 +44,9 @@ async def help(message: types.Message):
 @dp.message_handler(content_types=[ContentType.VOICE])
 async def handle_voice_message(message: Message):
 #    if message.chat.id != config.my_chat_id: return
-    log.info(f'Received voice message from @{message.from_user.username}')
+    log_msg(f'Received voice message from @{message.from_user.username}')
     if not config.recognize_voice:
-        log.info(f'Voice recognition is turned OFF')
+        log_msg(f'Voice recognition is turned OFF')
         return
     voice = await message.voice.get_file()
     path = os.path.dirname(__file__)
@@ -57,7 +61,7 @@ async def handle_voice_message(message: Message):
 @dp.message_handler(content_types=[ContentType.PHOTO])
 async def handle_photo(message: Message):
 #    if message.chat.id != config.my_chat_id: return
-    log.info(f'Received photo from @{message.from_user.username}')
+    log_msg(f'Received photo from @{message.from_user.username}')
     log_message(message)
     photo = message.photo[-1]
     file_name = unique_filename(create_photo_file_name(message), config.photo_path) # or photo.file_id + '.jpg'
@@ -78,7 +82,7 @@ async def handle_photo(message: Message):
 async def handle_document(message: Message):
 #    if message.chat.id != config.my_chat_id: return
     file_name = unique_filename(message.document.file_name, config.photo_path)
-    log.info(f'Received document {file_name} from @{message.from_user.username}')
+    log_msg(f'Received document {file_name} from @{message.from_user.username}')
     log_message(message)
     print(f'Got document: {file_name}')
     file = await message.document.get_file()
@@ -98,7 +102,7 @@ async def handle_document(message: Message):
 @dp.message_handler(content_types=[ContentType.CONTACT])
 async def handle_contact(message: Message):
 #    if message.chat.id != config.my_chat_id: return
-    log.info(f'Received contact from @{message.from_user.username}')
+    log_msg(f'Received contact from @{message.from_user.username}')
     log_message(message)
     print(f'Got contact')
     contact_note = await get_contact_data(message)
@@ -108,7 +112,7 @@ async def handle_contact(message: Message):
 @dp.message_handler(content_types=[ContentType.LOCATION])
 async def handle_location(message: Message):
 #    if message.chat.id != config.my_chat_id: return
-    log.info(f'Received location from @{message.from_user.username}')
+    log_msg(f'Received location from @{message.from_user.username}')
     log_message(message)
     print(f'Got location')
     location_note = get_location_note(message)
@@ -118,7 +122,7 @@ async def handle_location(message: Message):
 @dp.message_handler(content_types=[ContentType.ANIMATION])
 async def handle_animation(message: Message):
 #    if message.chat.id != config.my_chat_id: return
-    log.info(f'Received animation from @{message.from_user.username}')
+    log_msg(f'Received animation from @{message.from_user.username}')
     log_message(message)
     print(f'Got animation')
 
@@ -126,7 +130,7 @@ async def handle_animation(message: Message):
 @dp.message_handler(content_types=[ContentType.VIDEO_NOTE])
 async def handle_video_note(message: Message):
 #    if message.chat.id != config.my_chat_id: return
-    log.info(f'Received video note from @{message.from_user.username}')
+    log_msg(f'Received video note from @{message.from_user.username}')
     log_message(message)
     print(f'Got video note')
 
@@ -134,7 +138,7 @@ async def handle_video_note(message: Message):
 @dp.message_handler()
 async def process_message(message: types.Message):
 #    if message.chat.id != config.my_chat_id: return
-    log.info(f'Received text message from @{message.from_user.username}')
+    log_msg(f'Received text message from @{message.from_user.username}')
     log_message(message)
     message_body = embed_formatting(message)
     forward_info = get_forward_info(message)
@@ -192,12 +196,13 @@ def get_forward_info(m: Message) -> str:
 
 def log_message(message):
     # Saving of the whole message into the incoming message log just in case
-    curr_date = dt.now().strftime('%Y-%m-%d')
-    curr_time = dt.now().strftime('%H:%M:%S')
-    file_name = 'messages-' + curr_date + '.txt'
-    with open(file_name, 'a', encoding='UTF-8') as f:
-        print(curr_time + '  ', list(message), '\n', file = f)
-    log.info(f'Message content saved to {file_name}')
+    if 'log_level' in dir(config) and config.log_level >= 2:
+        curr_date = dt.now().strftime('%Y-%m-%d')
+        curr_time = dt.now().strftime('%H:%M:%S')
+        file_name = 'messages-' + curr_date + '.txt'
+        with open(file_name, 'a', encoding='UTF-8') as f:
+            print(curr_time + '  ', list(message), '\n', file = f)
+        log_msg(f'Message content saved to {file_name}')
 
 
 def get_note_file_name_parts(curr_date):
@@ -306,13 +311,13 @@ async def stt(audio_file_path) -> str:
     model = config.whisper_model if 'whisper_model' in dir(config) else 'medium'
     model = whisper.load_model(model)
 
-    log.info('Audio recognition started')
+    log_msg('Audio recognition started')
     result = model.transcribe(audio_file_path, verbose = False, language = 'ru')
     rawtext = ' '.join([segment['text'].strip() for segment in result['segments']])
     rawtext = re.sub(" +", " ", rawtext)
 
     alltext = re.sub("([\.\!\?]) ", "\\1\n", rawtext)
-    log.info(f'Recognized: {alltext}')
+    log_msg(f'Recognized: {alltext}')
 
     return alltext
 
@@ -387,6 +392,10 @@ def get_location_note(message: Message) -> str:
 [Google maps](https://www.google.com/maps/search/?api=1&query={lat},{lon}), [Yandex maps](https://yandex.ru/maps/?text={lat}%2C{lon}&z=17)
 '''
     return location_note
+
+def log_msg(text: str):
+    if basic_log:
+        log.info(text)
 
 
 if __name__ == '__main__':
