@@ -348,10 +348,10 @@ def unique_indexed_filename(file: str, path: str) -> str:
     # create incrementing variable
     i = 1
     # determine incremented filename
-    while os.path.exists(f'{filexx}_{i:02}{filext}'):
+    while os.path.exists(f'{filexx}{i:02}{filext}'):
         # update the incrementing variable
         i += 1
-    return f'{filename}_{i:02}{filext}'
+    return f'{filename}{i:02}{filext}'
 
 
 async def get_contact_data(message: Message) -> str:
