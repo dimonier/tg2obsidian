@@ -233,11 +233,22 @@ def get_curr_date() -> str:
     return dt.now().strftime('%Y-%m-%d')
 
 
+def one_line_note() -> bool:
+    one_line_note = False if 'one_line_note' not in dir(config) or config.one_line_note == False else True
+    return one_line_note
+
+
 def save_message(note: str) -> None:
     curr_date = dt.now().strftime('%Y-%m-%d')
     curr_time = dt.now().strftime('%H:%M:%S')
-    note_body = check_if_task(check_if_negative(note))
-    note_text = f'#### [[{curr_date}]] {curr_time}\n{note_body}\n\n'
+    if one_line_note():
+        # Replace all line breaks with spaces and make simple time stamp
+        note_body = note.replace('\n', ' ')
+        note_text = check_if_task(check_if_negative(f'[[{curr_date}]] - {note_body}\n'))
+    else:
+        # Keep line breaks and add a header with a time stamp
+        note_body = check_if_task(check_if_negative(note))
+        note_text = f'#### [[{curr_date}]] {curr_time}\n{note_body}\n\n'
     with open(get_note_name(curr_date), 'a', encoding='UTF-8') as f:
         f.write(note_text)
 
