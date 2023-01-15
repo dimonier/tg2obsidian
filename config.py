@@ -39,6 +39,10 @@ note_postfix = '_Notes'
 # `messages-YYYY-MM-DD.txt` file in the script folder in order to help debugging the script.
 log_level = 2
 
+# If True, then all line breaks are removed from the note, and any note literally becomes one-line note.
+# If False, then the note is stored including all line breaks.
+one_line_note = False
+
 # If one of the specified substrings is found in the message text (case insensitive),
 # the message will be converted to a Markdown task like the following:
 # - [ ] Complete one important task
