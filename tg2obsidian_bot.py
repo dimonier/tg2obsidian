@@ -188,7 +188,7 @@ def get_forward_info(m: Message) -> str:
     forward_info = ' '.join([item for item in [post, chat, user] if len(item) > 0])
 
     if forwarded:
-        result = f'**Forwarded {forward_info}**\n'
+        result = bold(f'Forwarded {forward_info}') + '\n'
     else:
         result = ''
 
@@ -238,6 +238,11 @@ def one_line_note() -> bool:
     return one_line_note
 
 
+def format_messages() -> bool:
+    format_messages = True if 'format_messages' not in dir(config) or config.format_messages else False
+    return format_messages
+
+
 def save_message(note: str) -> None:
     curr_date = dt.now().strftime('%Y-%m-%d')
     curr_time = dt.now().strftime('%H:%M:%S')
@@ -270,7 +275,7 @@ def embed_formatting(message) -> str:
     # If the message contains any formatting (inclusing inline links), add corresponding Markdown markup
     note = message['text']
 
-    if not config.format_messages:
+    if not format_messages():
         return note
 
     formats = {'bold': '**',
@@ -413,8 +418,8 @@ def get_location_note(message: Message) -> str:
     lat = message.location.latitude
     lon = message.location.longitude
 
-    location_note = f'''**Latitude**: {lat}
-**Longitude**: {lon}
+    location_note = f'''{bold('Latitude')}: {lat}
+{bold('Longitude')}: {lon}
 [Google maps](https://www.google.com/maps/search/?api=1&query={lat},{lon}), [Yandex maps](https://yandex.ru/maps/?text={lat}%2C{lon}&z=17)
 '''
     return location_note
@@ -422,6 +427,13 @@ def get_location_note(message: Message) -> str:
 def log_msg(text: str):
     if basic_log:
         log.info(text)
+
+
+def bold(text: str) -> str:
+    if format_messages():
+        return f'**{text}**'
+    else:
+        return text
 
 
 if __name__ == '__main__':
