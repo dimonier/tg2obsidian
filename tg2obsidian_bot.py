@@ -64,7 +64,7 @@ async def handle_photo(message: Message):
     log_msg(f'Received photo from @{message.from_user.username}')
     log_message(message)
     photo = message.photo[-1]
-    file_name = unique_filename(create_photo_file_name(message), config.photo_path) # or photo.file_id + '.jpg'
+    file_name = unique_indexed_filename(create_photo_file_name(message), config.photo_path) # or photo.file_id + '.jpg'
     print(f'Got photo: {file_name}')
     photo_file = await photo.get_file()
 
@@ -337,6 +337,21 @@ def unique_filename(file: str, path: str) -> str:
         # update the incrementing variable
         i += 1
     return f'{filename}_{str(i)}{filext}'
+
+
+def unique_indexed_filename(file: str, path: str) -> str:
+    """Add minimal unique numeric index to file name to make up non existing file name"""
+    # get file name and extension
+    filename, filext = os.path.splitext(file)
+    # get full file path without extension only
+    filexx = os.path.join(path, filename)
+    # create incrementing variable
+    i = 1
+    # determine incremented filename
+    while os.path.exists(f'{filexx}_{i:02}{filext}'):
+        # update the incrementing variable
+        i += 1
+    return f'{filename}_{i:02}{filext}'
 
 
 async def get_contact_data(message: Message) -> str:
