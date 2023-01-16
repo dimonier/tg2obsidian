@@ -63,7 +63,7 @@ python tg2obsidian_bot.py
 
 ## Known issues
 
-1. If a message contains both emoji and formatting, positions where the formatting is applied may be inaccurate. If you have a lot of such issues, you can disable formatting in config.
+Check in the [Issues](https://github.com/dimonier/tg2obsidian/issues?q=is%3Aopen+is%3Aissue+label%3Abug) section.
 
 ## Support author
 
