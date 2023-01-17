@@ -329,7 +329,7 @@ def parse_entities(text: bytes,
             if content_parts[2].find('\n') == -1:
                 formatted_note += '\n'
             formatted_note += '```'
-            if (len(text) - entity_end < 2 or 
+            if (len(text) - entity_end < 2 or
                from_u16(text[entity_end:entity_end+2])[0] != '\n'):
                 formatted_note += '\n'
             continue
@@ -372,7 +372,7 @@ def embed_formatting(message) -> str:
     # If the message contains any formatting (inclusing inline links), add corresponding Markdown markup
     note = message['text']
 
-    if not config.format_messages:
+    if not format_messages():
         return note
 
     if len(message['entities']) == 0:
