@@ -10,7 +10,7 @@ from pathlib import Path
 from datetime import datetime as dt
 from aiogram import Bot, Dispatcher, types
 from aiogram.dispatcher.filters.builtin import CommandStart, CommandHelp
-from aiogram.types import ContentType, File, Message
+from aiogram.types import ContentType, File, Message, MessageEntity
 from aiogram.utils import executor
 
 import config
@@ -271,54 +271,120 @@ def check_if_negative(note_body) -> str:
     if is_negative: note_body += f'\n{config.negative_tag}'
     return note_body
 
+# returns index of a first non ws character in a string
+def content_index(c: str) -> int:
+    ret = 0
+    for i in c:
+       if not i.isspace():
+           return ret
+       ret += 1
+    return -1
+
+#returns (ws?, content?, ws?)
+def partition_string(text: str) -> tuple:
+    start = content_index(text)
+    if start == -1:
+        return (text,'','')
+    end = content_index(text[::-1])
+    end = len(text) if end == -1 else len(text) - end
+    return (text[:start], text[start:end], text[end:])
+
+def to_u16(text: str) -> bytes:
+    return text.encode('utf-16-le')
+
+def from_u16(text: bytes) -> str:
+    return text.decode('utf-16-le')
+
+
+formats = {'bold': ('**', '**'),
+           'italic': ('_', '_'),
+           'underline': ('<u>', '</u>'),
+           'strikethrough': ('~~', '~~'),
+           'code': ('`', '`'),
+}
+
+def parse_entities(text: bytes,
+    entities: list[MessageEntity],
+    offset: int,
+    end: int) -> str:
+    formatted_note = ''
+
+    for entity_index, entity in enumerate(entities):
+        entity_start = entity['offset'] * 2
+        if entity_start < offset:
+            continue
+        if entity_start > offset:
+            formatted_note += from_u16(text[offset:entity_start])
+        offset = entity_end = entity_start + entity['length'] * 2
+
+        format = entity['type']
+        if format == 'pre':
+            pre_content = from_u16(text[entity_start:entity_end])
+            content_parts = partition_string(pre_content)
+            formatted_note += '```'
+            if (len(content_parts[0]) == 0 and
+                content_parts[1].find('\n') == -1):
+                formatted_note += '\n'
+            formatted_note += pre_content
+            if content_parts[2].find('\n') == -1:
+                formatted_note += '\n'
+            formatted_note += '```'
+            if (len(text) - entity_end < 2 or 
+               from_u16(text[entity_end:entity_end+2])[0] != '\n'):
+                formatted_note += '\n'
+            continue
+        # parse nested entities for exampe: "**bold _italic_**
+        sub_entities = [e for e in entities[entity_index + 1:] if e['offset'] * 2 < entity_end]
+        parsed_entity = parse_entities(text, sub_entities, entity_start, entity_end)
+        content_parts = partition_string(parsed_entity)
+        content = content_parts[1]
+        if format in formats:
+            format_code = formats[format]
+            formatted_note += content_parts[0]
+            i = 0
+            while i < len(content):
+                index = content.find('\n\n', i) # inline formatting acros paragraphs, need to split
+                if index == -1:
+                    formatted_note += format_code[0] + content[i:] + format_code[1]
+                    break
+                formatted_note += format_code[0] + content[i:index] + format_code[1]
+                i = index
+                while content[i] == '\n':
+                    formatted_note += '\n'
+                    i += 1
+            formatted_note += content_parts[2]
+            continue
+        if format == 'mention':
+            formatted_note += f'{content_parts[0]}[{content}](https://t.me/{content[1:]}){content_parts[2]}'
+            continue
+        if format == 'text_link':
+            formatted_note += f'{content_parts[0]}[{content}]({entity["url"]}){content_parts[2]}'
+            continue
+        # Not processed (makes no sense): url, hashtag, cashtag, bot_command, email, phone_number
+        # Not processed (hard to visualize using Markdown): spoiler, text_mention, custom_emoji
+        formatted_note += parsed_entity
+
+    if offset < end:
+        formatted_note += from_u16(text[offset:end])
+    return formatted_note
+
 def embed_formatting(message) -> str:
     # If the message contains any formatting (inclusing inline links), add corresponding Markdown markup
     note = message['text']
 
-    if not format_messages():
+    if not config.format_messages:
         return note
 
-    formats = {'bold': '**',
-                'italic': '_',
-                'underline': '==',
-                'strikethrough': '~~',
-                'code': '`',
-    }
+    if len(message['entities']) == 0:
+        return message.md_text #escape markdown formatting if any
+
     formatted_note = ''
-    tail = 0
     try:
-        if len(message['entities']) == 0: formatted_note = note
-        for entity in message['entities']:
-            format = entity['type']
-            start_pos = entity['offset']
-            end_pos = start_pos + entity['length']
-            # Add unformatted piece of text before this entity, if exists
-            if start_pos > tail:
-                formatted_note += note[tail:start_pos]
-                tail = start_pos
-            # Process simple entities with symmetrical markup
-            if format in formats:
-                format_code = formats[format]
-                formatted_note += format_code + note[start_pos:end_pos].strip() + format_code
-                # Restore space after formatted text if it was placed before the closing markup
-                if note[end_pos-1] == ' ': formatted_note += ' '
-            # Process complex entities having asymmetrical markup
-            elif format == 'pre':
-                formatted_note += '```\n' + note[start_pos:end_pos] + '\n```'
-            elif format == 'mention':
-                formatted_note += f'[{note[start_pos:end_pos]}](https://t.me/{note[start_pos+1:end_pos]})'
-            elif format == 'text_link':
-                formatted_note += f'[{note[start_pos:end_pos]}]({entity["url"]})'
-            # Not processed (makes no sense): url, hashtag, cashtag, bot_command, email, phone_number
-            # Not processed (hard to visualize using Markdown): spoiler, text_mention, custom_emoji
-            else:
-                formatted_note += note[start_pos:end_pos]
-            tail = end_pos
-        # Add unformatted trailing piece of text, if exists
-        if len(message['entities']) > 0 and tail < len(note):
-            formatted_note += note[tail:]
-    except:
+        note_u16 = to_u16(note)
+        formatted_note = parse_entities(note_u16, message['entities'], 0, len(note_u16))
+    except Exception as e:
         # If the message does not contain any formatting
+        log_msg(f'{e}')
         formatted_note = note
     return formatted_note
 
