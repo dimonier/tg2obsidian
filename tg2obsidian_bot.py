@@ -376,7 +376,7 @@ def embed_formatting(message) -> str:
         return note
 
     if len(message['entities']) == 0:
-        return message.md_text #escape markdown formatting if any
+        return note
 
     formatted_note = ''
     try:
@@ -433,7 +433,11 @@ def unique_indexed_filename(file: str, path: str) -> str:
     while os.path.exists(f'{filexx}{i:02}{filext}'):
         # update the incrementing variable
         i += 1
-    return f'{filename}{i:02}{filext}'
+    unique_indexed_filename = f'{filename}{i:02}{filext}'
+    # create file to avoid reusing the same file name more than once
+    with open(os.path.join(path, unique_indexed_filename), 'w') as f:
+        f.write('')
+    return unique_indexed_filename
 
 
 async def get_contact_data(message: Message) -> str:
