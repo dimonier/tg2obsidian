@@ -64,7 +64,7 @@ async def handle_photo(message: Message):
     log_msg(f'Received photo from @{message.from_user.username}')
     log_message(message)
     photo = message.photo[-1]
-    file_name = unique_indexed_filename(create_photo_file_name(message), config.photo_path) # or photo.file_id + '.jpg'
+    file_name = unique_indexed_filename(create_media_file_name(message, 'pic', 'jpg'), config.photo_path) # or photo.file_id + '.jpg'
     print(f'Got photo: {file_name}')
     photo_file = await photo.get_file()
 
@@ -146,9 +146,17 @@ async def handle_video(message: Message):
 @dp.message_handler(content_types=[ContentType.VIDEO_NOTE])
 async def handle_video_note(message: Message):
 #    if message.chat.id != config.my_chat_id: return
-    log_msg(f'Received video note from @{message.from_user.username}')
     log_message(message)
-    print(f'Got video note')
+    file_name = unique_indexed_filename(create_media_file_name(message.video_note, 'video_note', 'mp4'), config.photo_path)
+    log_msg(f'Received video note from @{message.from_user.username}')
+    print(f'Got video note: {file_name}')
+
+    file = await message.video_note.get_file()
+#    file_path = file.file_path
+    await handle_file(file=file, file_name=file_name, path=config.photo_path)
+
+    doc_and_caption = f'{get_forward_info(message)}![[{file_name}]]\n{get_formatted_caption(message)}'
+    save_message(doc_and_caption)
 
 
 @dp.message_handler()
@@ -244,7 +252,7 @@ def get_note_name(curr_date) -> str:
     return os.path.join(config.inbox_path, ''.join(parts) + '.md')
 
 
-def create_photo_file_name(message: Message) -> str:
+def create_media_file_name(message: Message, suffix = 'media', ext = 'jpg') -> str:
     # ToDo: переделать на дату отправки сообщения
     curr_date = get_curr_date()
     parts = get_note_file_name_parts(curr_date)
@@ -254,7 +262,7 @@ def create_photo_file_name(message: Message) -> str:
     # Строим среднюю часть имени без лишних - и _
     note_name = re.sub("[-_]+", "-", f'{parts[0]}{parts[2]}'.strip('-_'))
 
-    return f'{curr_date}_{note_name}_pic.jpg'
+    return f'{curr_date}_{note_name}_{suffix}.{ext}'
 
 
 def get_curr_date() -> str:
