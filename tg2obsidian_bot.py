@@ -70,12 +70,8 @@ async def handle_photo(message: Message):
 
     await handle_file(file=photo_file, file_name=file_name, path=config.photo_path)
 
-    photo_message = {
-        'text': message.caption,
-        'entities': message.caption_entities,
-        }
     forward_info = get_forward_info(message)
-    photo_and_caption = f'{forward_info}![[{file_name}]]\n{embed_formatting(photo_message)}'
+    photo_and_caption = f'{forward_info}![[{file_name}]]\n{get_formatted_caption(message)}'
     save_message(photo_and_caption)
 
 @dp.message_handler(content_types=[ContentType.DOCUMENT])
@@ -89,13 +85,8 @@ async def handle_document(message: Message):
 #    file_path = file.file_path
     await handle_file(file=file, file_name=file_name, path=config.photo_path)
 
-    doc_message = {
-        'text': message.caption,
-        'entities': message.caption_entities,
-        }
-
     forward_info = get_forward_info(message)
-    doc_and_caption = f'{forward_info}[[{file_name}]]\n{embed_formatting(doc_message)}'
+    doc_and_caption = f'{forward_info}[[{file_name}]]\n{get_formatted_caption(message)}'
     save_message(doc_and_caption)
 
 
@@ -122,9 +113,34 @@ async def handle_location(message: Message):
 @dp.message_handler(content_types=[ContentType.ANIMATION])
 async def handle_animation(message: Message):
 #    if message.chat.id != config.my_chat_id: return
-    log_msg(f'Received animation from @{message.from_user.username}')
     log_message(message)
-    print(f'Got animation')
+    file_name = unique_filename(message.document.file_name, config.photo_path)
+    log_msg(f'Received animation {file_name} from @{message.from_user.username}')
+    print(f'Got animation: {file_name}')
+
+    file = await message.document.get_file()
+#    file_path = file.file_path
+    await handle_file(file=file, file_name=file_name, path=config.photo_path)
+
+    forward_info = get_forward_info(message)
+    doc_and_caption = f'{forward_info}![[{file_name}]]\n{get_formatted_caption(message)}'
+    save_message(doc_and_caption)
+
+
+@dp.message_handler(content_types=[ContentType.VIDEO])
+async def handle_video(message: Message):
+#    if message.chat.id != config.my_chat_id: return
+    log_message(message)
+    file_name = unique_filename(message.video.file_name, config.photo_path)
+    log_msg(f'Received video {file_name} from @{message.from_user.username}')
+    print(f'Got video: {file_name}')
+
+    file = await message.video.get_file()
+#    file_path = file.file_path
+    await handle_file(file=file, file_name=file_name, path=config.photo_path)
+
+    doc_and_caption = f'{get_forward_info(message)}![[{file_name}]]\n{get_formatted_caption(message)}'
+    save_message(doc_and_caption)
 
 
 @dp.message_handler(content_types=[ContentType.VIDEO_NOTE])
@@ -149,6 +165,18 @@ async def process_message(message: types.Message):
 async def handle_file(file: File, file_name: str, path: str):
     Path(f"{path}").mkdir(parents=True, exist_ok=True)
     await bot.download_file(file_path=file.file_path, destination=f"{path}/{file_name}")
+
+
+def get_formatted_caption(message: Message) -> str:
+
+    if message.caption:
+        doc_message = {
+            'text': message.caption,
+            'entities': message.caption_entities,
+            }
+        return embed_formatting(doc_message)
+    else:
+        return ''
 
 def get_forward_info(m: Message) -> str:
     # If the message is forwarded, extract forward info and make up forward header

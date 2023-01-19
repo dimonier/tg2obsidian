@@ -16,11 +16,11 @@ This readme is also available [in Russian](README.ru.md).
 
 ## Features
 
-- All messages are grouped by date — one note per day.
+- All messages are grouped by date — one note per day — or stored in a single note.
 - Each message in a note has a header with a date and time stamp.
-- Formatting of messages and captions is preserved.
+- Formatting of messages and captions is preserved or ignored depending on settings.
 - For forwarded messages, information about the origin is added.
-- Pictures and files are saved to the vault and embedded in the note.
+- Photos, animations, videos, and documents are saved to the vault and embedded in the note.
 - For contacts, YAML front matter and vcard are saved.
 - For locations, relevant links to Google and Yandex maps are created.
 - It is possible to convert notes with certain keywords into a task.
