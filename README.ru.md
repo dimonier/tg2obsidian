@@ -30,6 +30,8 @@
 
 ```shell
 pip install aiogram
+pip install beautifulsoup4
+pip install lxml
 ```
 
 3. Если требуется распознавать голосовые сообщения, установите модуль Whisper (для его установки в системе должен быть установлен [git](https://git-scm.com/)):

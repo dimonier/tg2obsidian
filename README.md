@@ -34,6 +34,8 @@ This readme is also available [in Russian](README.ru.md).
 
 ```shell
 pip install aiogram
+pip install beautifulsoup4
+pip install lxml
 ```
 
 3. Install Whisper module if you need voice messages get recognized to text (you need [git](https://git-scm.com/) installed to be able to do this):
