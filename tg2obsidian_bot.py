@@ -439,6 +439,9 @@ def get_open_graph_props(page: str) -> dict:
         m = soup.find("meta", attrs={"name": "description"})
         if m:
             props['description'] = m['content']
+    if not 'title' in props:
+        props['title'] = soup.title.string
+
     return props
 
 async def get_url_info_formatting(url: str) -> str:
@@ -446,27 +449,29 @@ async def get_url_info_formatting(url: str) -> str:
         page = await download(url, session)
         og_props = get_open_graph_props(page)
         if 'image' in og_props or 'description' in og_props:
-            formatted_note = '\n> [!link-info]'
+            sep = ''
+            image = ''
+            callout_type = "[!link-info-ni]"
+            if 'image' in og_props:
+                image += "!["
+                if 'image:alt' in og_props:
+                   image += og_props['image:alt'].replace("\n", " ")
+                image += f"]({og_props['image']})"
+                if 'image:width' in og_props and int(og_props['image:width']) < 600:
+                    callout_type = "[!link-info]"
+                else:
+                    callout_type = "[!link-preview]"
+                sep = "\n>"
+            formatted_note = f'\n> {callout_type}'
             if 'site_name' in og_props:
                 formatted_note += f" [{og_props['site_name']}]({url})"
             if 'title' in og_props:
                 formatted_note += "\n> # " + og_props['title']
             if 'description' in og_props:
                 formatted_note += "\n> "
-                formatted_note += "\n> ".join(og_props['description'].split('\n'))
-                if 'image' in og_props:
-                    formatted_note += "\n>"
+                formatted_note += "\n> ".join(og_props['description'].split('\n')) + sep
             if 'image' in og_props:
-                formatted_note += "\n> !["
-                if 'image:alt' in og_props:
-                   formatted_note += og_props['image:alt'].replace("\n", " ")
-                size_sep = "|"
-                if 'image:width' in og_props:
-                    formatted_note += f"|{og_props['image:width']}"
-                    size_sep = "x"
-                if 'image:height' in og_props:
-                    formatted_note += f"{size_sep}{og_props['image:height']}"
-                formatted_note += f"]({og_props['image']})"
+                formatted_note += f"\n> [{image}]({url})"
             return formatted_note + "\n"
         return ''
 
