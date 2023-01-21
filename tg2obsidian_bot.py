@@ -455,7 +455,16 @@ async def get_url_info_formatting(url: str) -> str:
                 if 'image' in og_props:
                     formatted_note += "\n>"
             if 'image' in og_props:
-                formatted_note += f"\n> ![]({og_props['image']})"
+                formatted_note += "\n> !["
+                if 'image:alt' in og_props:
+                   formatted_note += og_props['image:alt'].replace("\n", " ")
+                size_sep = "|"
+                if 'image:width' in og_props:
+                    formatted_note += f"|{og_props['image:width']}"
+                    size_sep = "x"
+                if 'image:height' in og_props:
+                    formatted_note += f"{size_sep}{og_props['image:height']}"
+                formatted_note += f"]({og_props['image']})"
             return formatted_note + "\n"
         return ''
 
