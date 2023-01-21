@@ -450,7 +450,8 @@ async def get_url_info_formatting(url: str) -> str:
             if 'title' in og_props:
                 formatted_note += "\n> # " + og_props['title']
             if 'description' in og_props:
-                formatted_note += "\n> " + og_props['description']
+                formatted_note += "\n> "
+                formatted_note += "\n> ".join(og_props['description'].split('\n'))
                 if 'image' in og_props:
                     formatted_note += "\n>"
             if 'image' in og_props:
