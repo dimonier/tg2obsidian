@@ -282,6 +282,8 @@ def format_messages() -> bool:
     format_messages = True if 'format_messages' not in dir(config) or config.format_messages else False
     return format_messages
 
+def create_link_info() -> bool:
+    return False if 'create_link_info' not in dir(config) else config.create_link_info
 
 def save_message(note: str) -> None:
     curr_date = dt.now().strftime('%Y-%m-%d')
@@ -408,7 +410,7 @@ def parse_entities(text: bytes,
         formatted_note += from_u16(text[offset:end])
     return formatted_note
 
-def is_url_only(message: Message) -> bool:
+def is_single_url(message: Message) -> bool:
     # assuming there is atleast one entity
     entities = message['entities']
     url_entity = entities[0]
@@ -483,7 +485,7 @@ async def embed_formatting(message: Message) -> str:
     try:
         note_u16 = to_u16(note)
         formatted_note = parse_entities(note_u16, entities, 0, len(note_u16))
-        if is_url_only(message):
+        if create_link_info() and is_single_url(message):
             url_entity = entities[0]
             url = url_entity.get_text(note) if url_entity['type'] == "url" else url_entity['url']
             formatted_note += await get_url_info_formatting(url)
