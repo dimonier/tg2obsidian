@@ -433,6 +433,10 @@ def get_open_graph_props(page: str) -> dict:
     meta = soup.find_all("meta", property=lambda x: x is not None and x.startswith("og:"))
     for m in meta:
         props[m['property'][3:].lstrip()] = m['content']
+    if not 'description' in props:
+        m = soup.find("meta", attrs={"name": "description"})
+        if m:
+            props['description'] = m['content']
     return props
 
 async def get_url_info_formatting(url: str) -> str:
