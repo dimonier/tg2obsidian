@@ -34,10 +34,10 @@ pip install beautifulsoup4
 pip install lxml
 ```
 
-3. Если требуется распознавать голосовые сообщения, установите модуль Whisper (для его установки в системе должен быть установлен [git](https://git-scm.com/)):
+3. Если требуется распознавать голосовые сообщения, установите модуль [Whisper](https://github.com/openai/whisper):
 
 ```shell
-pip install git+https://github.com/openai/whisper.git
+pip install -U openai-whisper
 ```
 
 4. Установите скомпилированный [FFMPEG](https://ffmpeg.org/download.html) и добавьте путь к исполняемому файлу (в Windows - ffmpeg.exe) в переменную окружения path. Перейдите в папку с данным скриптом и убедитесь, что ffmpeg.exe запускается из неё.
