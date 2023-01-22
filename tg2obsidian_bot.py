@@ -6,8 +6,12 @@
 import os
 import re
 import logging
+import aiohttp
 from pathlib import Path
 from datetime import datetime as dt
+from bs4 import BeautifulSoup
+import urllib.request
+
 from aiogram import Bot, Dispatcher, types
 from aiogram.dispatcher.filters.builtin import CommandStart, CommandHelp
 from aiogram.types import ContentType, File, Message, MessageEntity
@@ -71,7 +75,7 @@ async def handle_photo(message: Message):
     await handle_file(file=photo_file, file_name=file_name, path=config.photo_path)
 
     forward_info = get_forward_info(message)
-    photo_and_caption = f'{forward_info}![[{file_name}]]\n{get_formatted_caption(message)}'
+    photo_and_caption = f'{forward_info}![[{file_name}]]\n{await get_formatted_caption(message)}'
     save_message(photo_and_caption)
 
 @dp.message_handler(content_types=[ContentType.DOCUMENT])
@@ -86,7 +90,7 @@ async def handle_document(message: Message):
     await handle_file(file=file, file_name=file_name, path=config.photo_path)
 
     forward_info = get_forward_info(message)
-    doc_and_caption = f'{forward_info}[[{file_name}]]\n{get_formatted_caption(message)}'
+    doc_and_caption = f'{forward_info}[[{file_name}]]\n{await get_formatted_caption(message)}'
     save_message(doc_and_caption)
 
 
@@ -123,7 +127,7 @@ async def handle_animation(message: Message):
     await handle_file(file=file, file_name=file_name, path=config.photo_path)
 
     forward_info = get_forward_info(message)
-    doc_and_caption = f'{forward_info}![[{file_name}]]\n{get_formatted_caption(message)}'
+    doc_and_caption = f'{forward_info}![[{file_name}]]\n{await get_formatted_caption(message)}'
     save_message(doc_and_caption)
 
 
@@ -139,7 +143,7 @@ async def handle_video(message: Message):
 #    file_path = file.file_path
     await handle_file(file=file, file_name=file_name, path=config.photo_path)
 
-    doc_and_caption = f'{get_forward_info(message)}![[{file_name}]]\n{get_formatted_caption(message)}'
+    doc_and_caption = f'{get_forward_info(message)}![[{file_name}]]\n{await get_formatted_caption(message)}'
     save_message(doc_and_caption)
 
 
@@ -155,7 +159,7 @@ async def handle_video_note(message: Message):
 #    file_path = file.file_path
     await handle_file(file=file, file_name=file_name, path=config.photo_path)
 
-    doc_and_caption = f'{get_forward_info(message)}![[{file_name}]]\n{get_formatted_caption(message)}'
+    doc_and_caption = f'{get_forward_info(message)}![[{file_name}]]\n{await get_formatted_caption(message)}'
     save_message(doc_and_caption)
 
 
@@ -164,7 +168,7 @@ async def process_message(message: types.Message):
 #    if message.chat.id != config.my_chat_id: return
     log_msg(f'Received text message from @{message.from_user.username}')
     log_message(message)
-    message_body = embed_formatting(message)
+    message_body = await embed_formatting(message)
     forward_info = get_forward_info(message)
     save_message(forward_info + message_body)
 
@@ -175,14 +179,14 @@ async def handle_file(file: File, file_name: str, path: str):
     await bot.download_file(file_path=file.file_path, destination=f"{path}/{file_name}")
 
 
-def get_formatted_caption(message: Message) -> str:
+async def get_formatted_caption(message: Message) -> str:
 
     if message.caption:
         doc_message = {
             'text': message.caption,
             'entities': message.caption_entities,
             }
-        return embed_formatting(doc_message)
+        return await embed_formatting(doc_message)
     else:
         return ''
 
@@ -278,6 +282,8 @@ def format_messages() -> bool:
     format_messages = True if 'format_messages' not in dir(config) or config.format_messages else False
     return format_messages
 
+def create_link_info() -> bool:
+    return False if 'create_link_info' not in dir(config) else config.create_link_info
 
 def save_message(note: str) -> None:
     curr_date = dt.now().strftime('%Y-%m-%d')
@@ -385,7 +391,7 @@ def parse_entities(text: bytes,
                     break
                 formatted_note += format_code[0] + content[i:index] + format_code[1]
                 i = index
-                while content[i] == '\n':
+                while i < len(content) and content[i] == '\n':
                     formatted_note += '\n'
                     i += 1
             formatted_note += content_parts[2]
@@ -404,7 +410,72 @@ def parse_entities(text: bytes,
         formatted_note += from_u16(text[offset:end])
     return formatted_note
 
-def embed_formatting(message) -> str:
+def is_single_url(message: Message) -> bool:
+    # assuming there is atleast one entity
+    entities = message['entities']
+    url_entity = entities[0]
+    if url_entity['type'] == "url":
+        return True
+    if url_entity['type'] != "text_link":
+        return False
+    # need to check nested entities
+    url_end = url_entity['offset'] + url_entity['length']
+    for e in entities[1:]:
+        if e['offset'] > url_end:
+            return False
+    return True
+
+async def download(url, session: aiohttp.ClientSession) -> str:
+    async with session.get(url) as response:
+        return await response.text()
+
+def get_open_graph_props(page: str) -> dict:
+    props = {}
+    soup = BeautifulSoup(page, 'lxml')
+    meta = soup.find_all("meta", property=lambda x: x is not None and x.startswith("og:"))
+    for m in meta:
+        props[m['property'][3:].lstrip()] = m['content']
+    if not 'description' in props:
+        m = soup.find("meta", attrs={"name": "description"})
+        if m:
+            props['description'] = m['content']
+    if not 'title' in props:
+        props['title'] = soup.title.string
+
+    return props
+
+async def get_url_info_formatting(url: str) -> str:
+    async with aiohttp.ClientSession() as session:
+        page = await download(url, session)
+        og_props = get_open_graph_props(page)
+        if 'image' in og_props or 'description' in og_props:
+            sep = ''
+            image = ''
+            callout_type = "[!link-info-ni]"
+            if 'image' in og_props:
+                image += "!["
+                if 'image:alt' in og_props:
+                   image += og_props['image:alt'].replace("\n", " ")
+                image += f"]({og_props['image']})"
+                if 'image:width' in og_props and int(og_props['image:width']) < 600:
+                    callout_type = "[!link-info]"
+                else:
+                    callout_type = "[!link-preview]"
+                sep = "\n>"
+            formatted_note = f'\n> {callout_type}'
+            if 'site_name' in og_props:
+                formatted_note += f" [{og_props['site_name']}]({url})"
+            if 'title' in og_props:
+                formatted_note += "\n> # " + og_props['title']
+            if 'description' in og_props:
+                formatted_note += "\n> "
+                formatted_note += "\n> ".join(og_props['description'].split('\n')) + sep
+            if 'image' in og_props:
+                formatted_note += f"\n> [{image}]({url})"
+            return formatted_note + "\n"
+        return ''
+
+async def embed_formatting(message: Message) -> str:
     # If the message contains any formatting (inclusing inline links), add corresponding Markdown markup
     note = message['text']
 
@@ -414,13 +485,18 @@ def embed_formatting(message) -> str:
     if len(message['entities']) == 0:
         return note
 
+    entities = message['entities']
     formatted_note = ''
     try:
         note_u16 = to_u16(note)
-        formatted_note = parse_entities(note_u16, message['entities'], 0, len(note_u16))
+        formatted_note = parse_entities(note_u16, entities, 0, len(note_u16))
+        if create_link_info() and is_single_url(message):
+            url_entity = entities[0]
+            url = url_entity.get_text(note) if url_entity['type'] == "url" else url_entity['url']
+            formatted_note += await get_url_info_formatting(url)
     except Exception as e:
         # If the message does not contain any formatting
-        log_msg(f'{e}')
+        await message.reply(f'🤷‍♂️ {e}')
         formatted_note = note
     return formatted_note
 

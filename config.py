@@ -11,6 +11,11 @@ photo_path = r'C:\your-obsidian-vault\attachments'
 # If False, messages will be saved as plain text. This also removes inline links.
 format_messages = True
 
+#if True, callout block containing link information such as description and/or image will be created
+# for messages containing single url
+#if False, or more than one url in the message, no callout will be created
+create_link_info = True
+
 # If True, voice messages will be recognized to text.
 # This requires Whisper ( https://github.com/openai/whisper ), FFMPEG, Python and PyTorch to be installed
 # on the machine where the script is running.
