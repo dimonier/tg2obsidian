@@ -648,14 +648,9 @@ def bold(text: str) -> str:
 
 
 def note_from_message(message: Message):
-    note = ""
-    try:
-        print(message['date'])
-        msg_date = message['date'].strftime('%Y-%m-%d')
-        msg_time = message['date'].strftime('%H:%M:%S')
-        note = Note(date=msg_date, time=msg_time)
-    except Exception as e:
-        print(e)
+    msg_date = message['date'].strftime('%Y-%m-%d')
+    msg_time = message['date'].strftime('%H:%M:%S')
+    note = Note(date=msg_date, time=msg_time)
     return note
 
 
