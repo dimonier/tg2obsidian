@@ -7,6 +7,9 @@ import os
 import re
 import logging
 import aiohttp
+import torch
+import gc
+
 from pathlib import Path
 from datetime import datetime as dt
 from bs4 import BeautifulSoup
@@ -18,6 +21,15 @@ from aiogram.types import ContentType, File, Message, MessageEntity
 from aiogram.utils import executor
 
 import config
+
+class Note:
+    def __init__(self,
+                 text = "",
+                 date = dt.now().strftime('%Y-%m-%d'),
+                 time = dt.now().strftime('%H:%M:%S')):
+        self.text = text
+        self.date = date
+        self.time = time
 
 if 'log_level' in dir(config) and config.log_level >= 1:
     basic_log = True
@@ -52,14 +64,16 @@ async def handle_voice_message(message: Message):
     if not config.recognize_voice:
         log_msg(f'Voice recognition is turned OFF')
         return
+    note = note_from_message(message)
     voice = await message.voice.get_file()
     path = os.path.dirname(__file__)
 
     await handle_file(file=voice, file_name=f"{voice.file_id}.ogg", path=path)
     file_full_path = os.path.join(path, voice.file_id + '.ogg')
     note_stt = await stt(file_full_path)
+    note.text = note_stt
     await message.answer(note_stt)
-    save_message(note_stt)
+    save_message(note)
     os.remove(file_full_path)
 
 @dp.message_handler(content_types=[ContentType.PHOTO])
@@ -67,6 +81,7 @@ async def handle_photo(message: Message):
 #    if message.chat.id != config.my_chat_id: return
     log_msg(f'Received photo from @{message.from_user.username}')
     log_message(message)
+    note = note_from_message(message)
     photo = message.photo[-1]
     file_name = unique_indexed_filename(create_media_file_name(message, 'pic', 'jpg'), config.photo_path) # or photo.file_id + '.jpg'
     print(f'Got photo: {file_name}')
@@ -76,7 +91,8 @@ async def handle_photo(message: Message):
 
     forward_info = get_forward_info(message)
     photo_and_caption = f'{forward_info}![[{file_name}]]\n{await get_formatted_caption(message)}'
-    save_message(photo_and_caption)
+    note.text=photo_and_caption
+    save_message(note)
 
 @dp.message_handler(content_types=[ContentType.DOCUMENT])
 async def handle_document(message: Message):
@@ -84,14 +100,15 @@ async def handle_document(message: Message):
     file_name = unique_filename(message.document.file_name, config.photo_path)
     log_msg(f'Received document {file_name} from @{message.from_user.username}')
     log_message(message)
+    note = note_from_message(message)
     print(f'Got document: {file_name}')
     file = await message.document.get_file()
 #    file_path = file.file_path
     await handle_file(file=file, file_name=file_name, path=config.photo_path)
 
     forward_info = get_forward_info(message)
-    doc_and_caption = f'{forward_info}[[{file_name}]]\n{await get_formatted_caption(message)}'
-    save_message(doc_and_caption)
+    note.text = f'{forward_info}[[{file_name}]]\n{await get_formatted_caption(message)}'
+    save_message(note)
 
 
 @dp.message_handler(content_types=[ContentType.CONTACT])
@@ -99,9 +116,10 @@ async def handle_contact(message: Message):
 #    if message.chat.id != config.my_chat_id: return
     log_msg(f'Received contact from @{message.from_user.username}')
     log_message(message)
+    note = note_from_message(message)
     print(f'Got contact')
-    contact_note = await get_contact_data(message)
-    save_message(contact_note)
+    note.text = await get_contact_data(message)
+    save_message(note)
 
 
 @dp.message_handler(content_types=[ContentType.LOCATION])
@@ -110,8 +128,9 @@ async def handle_location(message: Message):
     log_msg(f'Received location from @{message.from_user.username}')
     log_message(message)
     print(f'Got location')
-    location_note = get_location_note(message)
-    save_message(location_note)
+    note = note_from_message(message)
+    note.text = get_location_note(message)
+    save_message(note)
 
 
 @dp.message_handler(content_types=[ContentType.ANIMATION])
@@ -121,14 +140,15 @@ async def handle_animation(message: Message):
     file_name = unique_filename(message.document.file_name, config.photo_path)
     log_msg(f'Received animation {file_name} from @{message.from_user.username}')
     print(f'Got animation: {file_name}')
+    note = note_from_message(message)
 
     file = await message.document.get_file()
 #    file_path = file.file_path
     await handle_file(file=file, file_name=file_name, path=config.photo_path)
 
     forward_info = get_forward_info(message)
-    doc_and_caption = f'{forward_info}![[{file_name}]]\n{await get_formatted_caption(message)}'
-    save_message(doc_and_caption)
+    note.text = f'{forward_info}![[{file_name}]]\n{await get_formatted_caption(message)}'
+    save_message(note)
 
 
 @dp.message_handler(content_types=[ContentType.VIDEO])
@@ -138,13 +158,14 @@ async def handle_video(message: Message):
     file_name = unique_filename(message.video.file_name, config.photo_path)
     log_msg(f'Received video {file_name} from @{message.from_user.username}')
     print(f'Got video: {file_name}')
+    note = note_from_message(message)
 
     file = await message.video.get_file()
 #    file_path = file.file_path
     await handle_file(file=file, file_name=file_name, path=config.photo_path)
 
-    doc_and_caption = f'{get_forward_info(message)}![[{file_name}]]\n{await get_formatted_caption(message)}'
-    save_message(doc_and_caption)
+    note.text = f'{get_forward_info(message)}![[{file_name}]]\n{await get_formatted_caption(message)}'
+    save_message(note)
 
 
 @dp.message_handler(content_types=[ContentType.VIDEO_NOTE])
@@ -154,13 +175,14 @@ async def handle_video_note(message: Message):
     file_name = unique_indexed_filename(create_media_file_name(message.video_note, 'video_note', 'mp4'), config.photo_path)
     log_msg(f'Received video note from @{message.from_user.username}')
     print(f'Got video note: {file_name}')
+    note = note_from_message(message)
 
     file = await message.video_note.get_file()
 #    file_path = file.file_path
     await handle_file(file=file, file_name=file_name, path=config.photo_path)
 
-    doc_and_caption = f'{get_forward_info(message)}![[{file_name}]]\n{await get_formatted_caption(message)}'
-    save_message(doc_and_caption)
+    note.text = f'{get_forward_info(message)}![[{file_name}]]\n{await get_formatted_caption(message)}'
+    save_message(note)
 
 
 @dp.message_handler()
@@ -168,9 +190,11 @@ async def process_message(message: types.Message):
 #    if message.chat.id != config.my_chat_id: return
     log_msg(f'Received text message from @{message.from_user.username}')
     log_message(message)
+    note = note_from_message(message)
     message_body = await embed_formatting(message)
     forward_info = get_forward_info(message)
-    save_message(forward_info + message_body)
+    note.text = forward_info + message_body
+    save_message(note)
 
 
 # Functions
@@ -285,16 +309,16 @@ def format_messages() -> bool:
 def create_link_info() -> bool:
     return False if 'create_link_info' not in dir(config) else config.create_link_info
 
-def save_message(note: str) -> None:
-    curr_date = dt.now().strftime('%Y-%m-%d')
-    curr_time = dt.now().strftime('%H:%M:%S')
+def save_message(note: Note) -> None:
+    curr_date = note.date
+    curr_time = note.time
     if one_line_note():
         # Replace all line breaks with spaces and make simple time stamp
-        note_body = note.replace('\n', ' ')
+        note_body = note.text.replace('\n', ' ')
         note_text = check_if_task(check_if_negative(f'[[{curr_date}]] - {note_body}\n'))
     else:
         # Keep line breaks and add a header with a time stamp
-        note_body = check_if_task(check_if_negative(note))
+        note_body = check_if_task(check_if_negative(note.text))
         note_text = f'#### [[{curr_date}]] {curr_time}\n{note_body}\n\n'
     with open(get_note_name(curr_date), 'a', encoding='UTF-8') as f:
         f.write(note_text)
@@ -507,6 +531,11 @@ async def stt(audio_file_path) -> str:
 
     log_msg('Audio recognition started')
     result = model.transcribe(audio_file_path, verbose = False, language = 'ru')
+    # Clear GPU memory
+    del model
+    gc.collect()
+    torch.cuda.empty_cache()
+
     rawtext = ' '.join([segment['text'].strip() for segment in result['segments']])
     rawtext = re.sub(" +", " ", rawtext)
 
@@ -616,6 +645,18 @@ def bold(text: str) -> str:
         return f'**{text}**'
     else:
         return text
+
+
+def note_from_message(message: Message):
+    note = ""
+    try:
+        print(message['date'])
+        msg_date = message['date'].strftime('%Y-%m-%d')
+        msg_time = message['date'].strftime('%H:%M:%S')
+        note = Note(date=msg_date, time=msg_time)
+    except Exception as e:
+        print(e)
+    return note
 
 
 if __name__ == '__main__':
