@@ -7,8 +7,6 @@ import os
 import re
 import logging
 import aiohttp
-import torch
-import gc
 
 from pathlib import Path
 from datetime import datetime as dt
@@ -37,6 +35,10 @@ if 'log_level' in dir(config) and config.log_level >= 1:
     log = logging.getLogger()
 else:
     basic_log = False
+
+if config.recognize_voice:
+    import torch
+    import gc
 
 bot = Bot(token = config.token)
 dp = Dispatcher(bot)
@@ -520,7 +522,7 @@ async def embed_formatting(message: Message) -> str:
             formatted_note += await get_url_info_formatting(url)
     except Exception as e:
         # If the message does not contain any formatting
-        await message.reply(f'🤷‍♂️ {e}')
+        # await message.reply(f'🤷‍♂️ {e}')
         formatted_note = note
     return formatted_note
 
@@ -546,6 +548,9 @@ async def stt(audio_file_path) -> str:
 
 def unique_filename(file: str, path: str) -> str:
     """Change file name if file already exists"""
+    # create target folder if not exist
+    if not os.path.exists(path):
+        os.makedirs(path)
     # check if file exists
     if not os.path.exists(os.path.join(path, file)):
         return file
@@ -564,6 +569,9 @@ def unique_filename(file: str, path: str) -> str:
 
 def unique_indexed_filename(file: str, path: str) -> str:
     """Add minimal unique numeric index to file name to make up non existing file name"""
+    # create target folder if not exist
+    if not os.path.exists(path):
+        os.makedirs(path)
     # get file name and extension
     filename, filext = os.path.splitext(file)
     # get full file path without extension only
