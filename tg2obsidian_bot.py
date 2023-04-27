@@ -72,6 +72,7 @@ async def handle_voice_message(message: Message):
 
     await handle_file(file=voice, file_name=f"{voice.file_id}.ogg", path=path)
     file_full_path = os.path.join(path, voice.file_id + '.ogg')
+    await bot.send_chat_action(chat_id=message['from']['id'], action=types.ChatActions.TYPING)
     note_stt = await stt(file_full_path)
     note.text = note_stt
     await message.answer(note_stt)
