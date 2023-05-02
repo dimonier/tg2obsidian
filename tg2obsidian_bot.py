@@ -75,9 +75,43 @@ async def handle_voice_message(message: Message):
     await bot.send_chat_action(chat_id=message['from']['id'], action=types.ChatActions.TYPING)
     note_stt = await stt(file_full_path)
     note.text = note_stt
-    await message.answer(note_stt)
+    try:
+        await answer_message(message, note_stt)
+    except Exception as e:
+        await answer_message(message, f'🤷‍♂️ {e}')
     save_message(note)
     os.remove(file_full_path)
+
+
+@dp.message_handler(content_types=[ContentType.AUDIO])
+async def handle_audio(message: Message):
+#    if message.chat.id != config.my_chat_id: return
+    log_msg(f'Received audio file from @{message.from_user.username}')
+    if not config.recognize_voice:
+        log_msg(f'Voice recognition is turned OFF')
+        return
+    note = note_from_message(message)
+    audio = await message.audio.get_file()
+    path = os.path.dirname(__file__)
+
+    await handle_file(file=audio, file_name=f"{message.audio.file_name}", path=path)
+    file_full_path = os.path.join(path, message.audio.file_name)
+    await bot.send_chat_action(chat_id=message['from']['id'], action=types.ChatActions.TYPING)
+    note_stt = await stt(file_full_path)
+    try:
+        await answer_message(message, note_stt)
+    except Exception as e:
+        await answer_message(message, f'🤷‍♂️ {e}')
+    # Добавляем подпись, если есть, и имя файла
+    if message.caption != None:
+        file_details = f'{bold(message.caption)} ({message.audio.file_name})'
+    else:
+        file_details = bold(message.audio.file_name)
+
+    note.text = f'{file_details}\n{note_stt}'
+    save_message(note)
+    os.remove(file_full_path)
+
 
 @dp.message_handler(content_types=[ContentType.PHOTO])
 async def handle_photo(message: Message):
@@ -106,8 +140,8 @@ async def handle_document(message: Message):
     note = note_from_message(message)
     print(f'Got document: {file_name}')
     file = await message.document.get_file()
-#    file_path = file.file_path
     await handle_file(file=file, file_name=file_name, path=config.photo_path)
+    # TODO: Если mime type = "audio/*", добавить распознавание аналогично ContentType.AUDIO
 
     forward_info = get_forward_info(message)
     note.text = f'{forward_info}[[{file_name}]]\n{await get_formatted_caption(message)}'
@@ -633,6 +667,56 @@ async def get_telegram_username(user_id: int) -> str:
 
     return result
 
+
+async def answer_message(message: Message, answer_text: str):
+    # Ограничение Telegram - не более 4096 знаков в сообщении
+    msg_len_limit = 4000
+    if len(answer_text) <= msg_len_limit:
+        await message.answer(answer_text)
+    else:
+        chunks = text_to_chunks(answer_text, msg_len_limit)
+        for chunk in chunks:
+            try:
+                await message.answer(chunk)
+            except Exception as e:
+                await message.answer(f'🤷‍♂️ {e}')
+
+
+def text_to_chunks(text, max_len):
+    """ Принимает строку text и делит её на части длиной до max_len. Возвращает список с частями"""
+    sentences = [piece.strip() + '.' for piece in text.split('.')]
+    texts = []
+    chunk = ''
+
+    for sentence in sentences:
+        if len(sentence) > max_len or len(chunk + ' ' + sentence) > max_len:
+            # Это предложение не влезает в обрабатываемый фрагмент
+            if len(chunk) > 0:
+                # Если во фрагменте уже что-то есть, сохраним его
+                texts.append(chunk.strip(' '))
+                chunk = ''
+            # Фрагмент пустой, начинаем наполнять
+            if len(sentence) > max_len:
+                # Если текущее предложение слишком длинное, засунем во фрагмент только, сколько влезет
+                words = sentence.split(' ')
+                for word in words:
+                    if len(chunk + ' ' + word) < max_len:
+                        # Это слово влезает в обрабатываемый фрагмент, можно добавлять
+                        chunk += ' ' + word
+                    else:
+                        # Это слово не влезает в обрабатываемый фрагмент
+                        texts.append(chunk.strip(' '))
+                        chunk = word
+            else:
+                # Фрагмент был пустой, так что просто засунем предложение в него
+                chunk = sentence
+
+        else:
+            # Это предложение влезает в обрабатываемый фрагмент, можно добавлять
+            chunk += ' ' + sentence
+    # Сохраняем последний фрагмент, если в нём что-то есть
+    if len(chunk) > 0: texts.append(chunk.strip(' '))
+    return texts
 
 def get_location_note(message: Message) -> str:
     lat = message.location.latitude

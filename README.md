@@ -25,7 +25,7 @@ This readme is also available [in Russian](README.ru.md).
 - For locations, relevant links to Google and Yandex maps are created.
 - It is possible to convert notes with certain keywords into a task.
 - It is possible to tag notes with certain keywords.
-- It is possible to recognize speech from the notes. In this case, the Bot sends the recognized text as a response to the original voice message.
+- It is possible to recognize speech from voice notes and audio messages. In this case, the Bot sends the recognized text as a response to the original message.
 
 ## Set up
 
