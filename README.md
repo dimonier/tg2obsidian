@@ -38,10 +38,11 @@ pip install beautifulsoup4
 pip install lxml
 ```
 
-3. Install [Whisper](https://github.com/openai/whisper) module if you need voice messages get recognized to text:
+3. Install [Whisper](https://github.com/openai/whisper) and Pytorch modules if you need voice messages get recognized to text:
 
 ```shell
 pip install -U openai-whisper
+pip install torch
 ```
 
 4. Install compiled [FFMPEG](https://ffmpeg.org/download.html) and add the path to the executable (in Windows — ffmpeg.exe) to the `path` environment variable. Go to the folder containing this script and make sure that `ffmpeg.exe` could be started there.
