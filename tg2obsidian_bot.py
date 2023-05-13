@@ -152,17 +152,34 @@ async def handle_document(message: Message):
 
     try:
         file = await message.document.get_file()
-
         await handle_file(file=file, file_name=file_name, path=config.photo_path)
-        # TODO: Если mime type = "audio/*", добавить распознавание аналогично ContentType.AUDIO
-
     except Exception as e:
         log_msg(f'Exception: {e}')
         await answer_message(message, f'🤷‍♂️ {e}')
         return
 
-    forward_info = get_forward_info(message)
-    note.text = f'{forward_info}[[{file_name}]]\n{await get_formatted_caption(message)}'
+    if config.recognize_voice and message.document.mime_type.split('/')[0] == 'audio':
+    # Если mime type = "audio/*", распознаем речь аналогично ContentType.AUDIO
+        await bot.send_chat_action(chat_id=message['from']['id'], action=types.ChatActions.TYPING)
+
+        file_full_path = os.path.join(config.photo_path, file_name)
+        note_stt = await stt(file_full_path)
+        try:
+            await answer_message(message, note_stt)
+        except Exception as e:
+            await answer_message(message, f'🤷‍♂️ {e}')
+        # Добавляем подпись, если есть, и имя файла
+        if message.caption != None:
+            file_details = f'{bold(message.caption)} ({file_name})'
+        else:
+            file_details = bold(file_name)
+
+        note.text = f'{file_details}\n{note_stt}'
+        os.remove(file_full_path)
+    else:
+        forward_info = get_forward_info(message)
+        note.text = f'{forward_info}[[{file_name}]]\n{await get_formatted_caption(message)}'
+
     save_message(note)
 
 
