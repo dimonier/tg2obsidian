@@ -7,6 +7,7 @@ import os
 import re
 import logging
 import aiohttp
+import time
 
 from pathlib import Path
 from datetime import datetime as dt
@@ -73,8 +74,11 @@ async def handle_voice_message(message: Message):
     await handle_file(file=voice, file_name=f"{voice.file_id}.ogg", path=path)
     file_full_path = os.path.join(path, voice.file_id + '.ogg')
     await bot.send_chat_action(chat_id=message['from']['id'], action=types.ChatActions.TYPING)
-    note_stt = await stt(file_full_path)
-    note.text = note_stt
+    try:
+        note_stt = await stt(file_full_path)
+        note.text = note_stt
+    except Exception as e:
+        await answer_message(message, f'🤷‍♂️ {e}')
     try:
         await answer_message(message, note_stt)
     except Exception as e:
@@ -91,7 +95,13 @@ async def handle_audio(message: Message):
         log_msg(f'Voice recognition is turned OFF')
         return
     note = note_from_message(message)
-    audio = await message.audio.get_file()
+    try:
+        audio = await message.audio.get_file()
+    except Exception as e:
+        log_msg(f'Exception: {e}')
+        await answer_message(message, f'🤷‍♂️ {e}')
+        return
+
     path = os.path.dirname(__file__)
 
     await handle_file(file=audio, file_name=f"{message.audio.file_name}", path=path)
@@ -139,9 +149,17 @@ async def handle_document(message: Message):
     log_message(message)
     note = note_from_message(message)
     print(f'Got document: {file_name}')
-    file = await message.document.get_file()
-    await handle_file(file=file, file_name=file_name, path=config.photo_path)
-    # TODO: Если mime type = "audio/*", добавить распознавание аналогично ContentType.AUDIO
+
+    try:
+        file = await message.document.get_file()
+
+        await handle_file(file=file, file_name=file_name, path=config.photo_path)
+        # TODO: Если mime type = "audio/*", добавить распознавание аналогично ContentType.AUDIO
+
+    except Exception as e:
+        log_msg(f'Exception: {e}')
+        await answer_message(message, f'🤷‍♂️ {e}')
+        return
 
     forward_info = get_forward_info(message)
     note.text = f'{forward_info}[[{file_name}]]\n{await get_formatted_caption(message)}'
@@ -680,6 +698,7 @@ async def answer_message(message: Message, answer_text: str):
                 await message.answer(chunk)
             except Exception as e:
                 await message.answer(f'🤷‍♂️ {e}')
+            time.sleep(0.03)
 
 
 def text_to_chunks(text, max_len):
