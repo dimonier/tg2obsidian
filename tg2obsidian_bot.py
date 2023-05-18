@@ -30,16 +30,20 @@ class Note:
         self.date = date
         self.time = time
 
+basic_log = False
+debug_log = False
+
 if 'log_level' in dir(config) and config.log_level >= 1:
     basic_log = True
+    if config.log_level >= 2:
+        debug_log = True
     logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.INFO, filename = 'bot.log', encoding = 'UTF-8', datefmt = '%Y-%m-%d %H:%M:%S')
     log = logging.getLogger()
-else:
-    basic_log = False
 
 if config.recognize_voice:
     import torch
     import gc
+    print('Prepared for speech-to-text recognition')
 
 bot = Bot(token = config.token)
 dp = Dispatcher(bot)
@@ -47,7 +51,7 @@ dp = Dispatcher(bot)
 # Handlers
 @dp.message_handler(CommandStart())
 async def send_welcome(message: types.Message):
-    log_msg(f'Starting chat with the user @{message.from_user.username} ({message.from_user.first_name} {message.from_user.last_name}, user_id = {message.from_id}), chat_id = {message.chat.id} ({message.chat.title})')
+    log_basic(f'Starting chat with the user @{message.from_user.username} ({message.from_user.first_name} {message.from_user.last_name}, user_id = {message.from_id}), chat_id = {message.chat.id} ({message.chat.title})')
     reply_text = f'Hello {message.from_user.full_name}!\n\nI`m a private bot, I save messages from a private Telegram group to Obsidian inbox.\n\nYour Id: {message.from_id}\nThis chat Id: {message.chat.id}\n'
     await message.reply(reply_text)
 
@@ -63,9 +67,10 @@ async def help(message: types.Message):
 @dp.message_handler(content_types=[ContentType.VOICE])
 async def handle_voice_message(message: Message):
 #    if message.chat.id != config.my_chat_id: return
-    log_msg(f'Received voice message from @{message.from_user.username}')
+    log_basic(f'Received voice message from @{message.from_user.username}')
+    log_message(message)
     if not config.recognize_voice:
-        log_msg(f'Voice recognition is turned OFF')
+        log_basic(f'Voice recognition is turned OFF')
         return
     note = note_from_message(message)
     voice = await message.voice.get_file()
@@ -74,6 +79,7 @@ async def handle_voice_message(message: Message):
     await handle_file(file=voice, file_name=f"{voice.file_id}.ogg", path=path)
     file_full_path = os.path.join(path, voice.file_id + '.ogg')
     await bot.send_chat_action(chat_id=message['from']['id'], action=types.ChatActions.TYPING)
+
     try:
         note_stt = await stt(file_full_path)
         note.text = note_stt
@@ -90,15 +96,16 @@ async def handle_voice_message(message: Message):
 @dp.message_handler(content_types=[ContentType.AUDIO])
 async def handle_audio(message: Message):
 #    if message.chat.id != config.my_chat_id: return
-    log_msg(f'Received audio file from @{message.from_user.username}')
+    log_basic(f'Received audio file from @{message.from_user.username}')
+    log_message(message)
     if not config.recognize_voice:
-        log_msg(f'Voice recognition is turned OFF')
+        log_basic(f'Voice recognition is turned OFF')
         return
     note = note_from_message(message)
     try:
         audio = await message.audio.get_file()
     except Exception as e:
-        log_msg(f'Exception: {e}')
+        log_basic(f'Exception: {e}')
         await answer_message(message, f'🤷‍♂️ {e}')
         return
 
@@ -126,7 +133,7 @@ async def handle_audio(message: Message):
 @dp.message_handler(content_types=[ContentType.PHOTO])
 async def handle_photo(message: Message):
 #    if message.chat.id != config.my_chat_id: return
-    log_msg(f'Received photo from @{message.from_user.username}')
+    log_basic(f'Received photo from @{message.from_user.username}')
     log_message(message)
     note = note_from_message(message)
     photo = message.photo[-1]
@@ -145,7 +152,7 @@ async def handle_photo(message: Message):
 async def handle_document(message: Message):
 #    if message.chat.id != config.my_chat_id: return
     file_name = unique_filename(message.document.file_name, config.photo_path)
-    log_msg(f'Received document {file_name} from @{message.from_user.username}')
+    log_basic(f'Received document {file_name} from @{message.from_user.username}')
     log_message(message)
     note = note_from_message(message)
     print(f'Got document: {file_name}')
@@ -154,7 +161,7 @@ async def handle_document(message: Message):
         file = await message.document.get_file()
         await handle_file(file=file, file_name=file_name, path=config.photo_path)
     except Exception as e:
-        log_msg(f'Exception: {e}')
+        log_basic(f'Exception: {e}')
         await answer_message(message, f'🤷‍♂️ {e}')
         return
 
@@ -186,7 +193,7 @@ async def handle_document(message: Message):
 @dp.message_handler(content_types=[ContentType.CONTACT])
 async def handle_contact(message: Message):
 #    if message.chat.id != config.my_chat_id: return
-    log_msg(f'Received contact from @{message.from_user.username}')
+    log_basic(f'Received contact from @{message.from_user.username}')
     log_message(message)
     note = note_from_message(message)
     print(f'Got contact')
@@ -197,7 +204,7 @@ async def handle_contact(message: Message):
 @dp.message_handler(content_types=[ContentType.LOCATION])
 async def handle_location(message: Message):
 #    if message.chat.id != config.my_chat_id: return
-    log_msg(f'Received location from @{message.from_user.username}')
+    log_basic(f'Received location from @{message.from_user.username}')
     log_message(message)
     print(f'Got location')
     note = note_from_message(message)
@@ -210,7 +217,7 @@ async def handle_animation(message: Message):
 #    if message.chat.id != config.my_chat_id: return
     log_message(message)
     file_name = unique_filename(message.document.file_name, config.photo_path)
-    log_msg(f'Received animation {file_name} from @{message.from_user.username}')
+    log_basic(f'Received animation {file_name} from @{message.from_user.username}')
     print(f'Got animation: {file_name}')
     note = note_from_message(message)
 
@@ -228,7 +235,7 @@ async def handle_video(message: Message):
 #    if message.chat.id != config.my_chat_id: return
     log_message(message)
     file_name = unique_filename(message.video.file_name, config.photo_path)
-    log_msg(f'Received video {file_name} from @{message.from_user.username}')
+    log_basic(f'Received video {file_name} from @{message.from_user.username}')
     print(f'Got video: {file_name}')
     note = note_from_message(message)
 
@@ -245,7 +252,7 @@ async def handle_video_note(message: Message):
 #    if message.chat.id != config.my_chat_id: return
     log_message(message)
     file_name = unique_indexed_filename(create_media_file_name(message.video_note, 'video_note', 'mp4'), config.photo_path)
-    log_msg(f'Received video note from @{message.from_user.username}')
+    log_basic(f'Received video note from @{message.from_user.username}')
     print(f'Got video note: {file_name}')
     note = note_from_message(message)
 
@@ -260,7 +267,7 @@ async def handle_video_note(message: Message):
 @dp.message_handler()
 async def process_message(message: types.Message):
 #    if message.chat.id != config.my_chat_id: return
-    log_msg(f'Received text message from @{message.from_user.username}')
+    log_basic(f'Received text message from @{message.from_user.username}')
     log_message(message)
     note = note_from_message(message)
     message_body = await embed_formatting(message)
@@ -332,13 +339,13 @@ def get_forward_info(m: Message) -> str:
 
 def log_message(message):
     # Saving of the whole message into the incoming message log just in case
-    if 'log_level' in dir(config) and config.log_level >= 2:
+    if debug_log:
         curr_date = dt.now().strftime('%Y-%m-%d')
         curr_time = dt.now().strftime('%H:%M:%S')
         file_name = 'messages-' + curr_date + '.txt'
         with open(file_name, 'a', encoding='UTF-8') as f:
             print(curr_time + '  ', list(message), '\n', file = f)
-        log_msg(f'Message content saved to {file_name}')
+        log_debug(f'Message content saved to {file_name}')
 
 
 def get_note_file_name_parts(curr_date):
@@ -601,18 +608,25 @@ async def stt(audio_file_path) -> str:
     model = config.whisper_model if 'whisper_model' in dir(config) else 'medium'
     model = whisper.load_model(model)
 
-    log_msg('Audio recognition started')
+    log_basic('Audio recognition started')
     result = model.transcribe(audio_file_path, verbose = False, language = 'ru')
     # Clear GPU memory
     del model
     gc.collect()
     torch.cuda.empty_cache()
 
-    rawtext = ' '.join([segment['text'].strip() for segment in result['segments']])
-    rawtext = re.sub(" +", " ", rawtext)
+    if hasattr(result['segments'], '__iter__'):
+        rawtext = ' '.join([segment['text'].strip() for segment in result['segments']])
+        rawtext = re.sub(" +", " ", rawtext)
 
-    alltext = re.sub("([\.\!\?]) ", "\\1\n", rawtext)
-    log_msg(f'Recognized: {alltext}')
+        alltext = re.sub("([\.\!\?]) ", "\\1\n", rawtext)
+        if debug_log:
+            log_debug(f'Recognized: {alltext}')
+        else:
+            log_basic(f'Recognized {len(alltext)} characters')
+    else:
+        alltext = ""
+        log_basic('Nothing recognized')
 
     return alltext
 
@@ -764,8 +778,13 @@ def get_location_note(message: Message) -> str:
 '''
     return location_note
 
-def log_msg(text: str):
+def log_basic(text: str):
     if basic_log:
+        log.info(text)
+
+
+def log_debug(text: str):
+    if debug_log:
         log.info(text)
 
 
@@ -784,6 +803,7 @@ def note_from_message(message: Message):
 
 
 if __name__ == '__main__':
+    print('Bot started')
     executor.start_polling(dp, skip_updates=False, relax = 1)
 
 # The code below never runs
