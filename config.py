@@ -65,9 +65,8 @@ negative_tag = '#негатив'
 # my_chat_id = -xxxxxxxxx
 
 #tracker = {
-#    'path': 'path to tracker folder'
+#    'path': r'path to tracker folder', #change as required or remove to use inbox_path
 #    'activities' : {
 #        'read' : ( 'Чтение', '- {cur_date} {cur_time} читал {text}\n')
-#         ...
 #    }
 #}
