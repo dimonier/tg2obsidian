@@ -15,17 +15,20 @@ from bs4 import BeautifulSoup
 import urllib.request
 
 from aiogram import Bot, Dispatcher, types
-from aiogram.dispatcher.filters.builtin import CommandStart, CommandHelp
+from aiogram.dispatcher.filters.builtin import Filter, CommandStart, CommandHelp
 from aiogram.types import ContentType, File, Message, MessageEntity
 from aiogram.utils import executor
 
 import config
 
+DATE_FORMAT = '%Y-%m-%d'
+TIME_FORMAT = '%H:%M:%S'
+
 class Note:
     def __init__(self,
                  text = "",
-                 date = dt.now().strftime('%Y-%m-%d'),
-                 time = dt.now().strftime('%H:%M:%S')):
+                 date = dt.now().strftime(DATE_FORMAT),
+                 time = dt.now().strftime(TIME_FORMAT)):
         self.text = text
         self.date = date
         self.time = time
@@ -48,6 +51,23 @@ if config.recognize_voice:
 bot = Bot(token = config.token)
 dp = Dispatcher(bot)
 
+
+def tracker_config():
+    if 'tracker' not in dir(config):
+        return {'activities': {}}
+    return config.tracker
+
+
+class TrackerFilter(Filter):
+    async def check(self, message: types.Message) -> bool:
+        if not message.is_command():
+            return False
+        command = message.text.split()[0][1:]
+        tc = tracker_config()
+        if command in tc['activities'] and len(tc['activities'][command]) == 2:
+            return True
+        return False
+
 # Handlers
 @dp.message_handler(CommandStart())
 async def send_welcome(message: types.Message):
@@ -63,6 +83,25 @@ async def help(message: types.Message):
     an audio message - to be recognized and passed into Obsidian inbox as text
     '''
     await message.reply(reply_text)
+
+
+@dp.message_handler(TrackerFilter())
+async def handle_tracker_command(message: Message):
+    command, *args = message.text.split()
+    tc = tracker_config()
+    path = tc['path'] if 'path' in tc else config.inbox_path
+    activity = tc['activities'][command[1:]]
+    try:
+        dest = Path(path)
+        dest.mkdir(parents=True, exist_ok=True)
+        props = {'cur_date': message['date'].strftime(DATE_FORMAT),
+                 'cur_time': message['date'].strftime(TIME_FORMAT),
+                 'text': ' '.join(args)}
+        with dest.joinpath(activity[0]).with_suffix('.md').open(mode='a', encoding='UTF-8') as f:
+            f.write(activity[1].format(**props))
+    except Exception as e:
+        await answer_message(message, f'🤷‍♂️ {e}')
+
 
 @dp.message_handler(content_types=[ContentType.VOICE])
 async def handle_voice_message(message: Message):
@@ -340,8 +379,8 @@ def get_forward_info(m: Message) -> str:
 def log_message(message):
     # Saving of the whole message into the incoming message log just in case
     if debug_log:
-        curr_date = dt.now().strftime('%Y-%m-%d')
-        curr_time = dt.now().strftime('%H:%M:%S')
+        curr_date = dt.now().strftime(DATE_FORMAT)
+        curr_time = dt.now().strftime(TIME_FORMAT)
         file_name = 'messages-' + curr_date + '.txt'
         with open(file_name, 'a', encoding='UTF-8') as f:
             print(curr_time + '  ', list(message), '\n', file = f)
@@ -373,7 +412,7 @@ def create_media_file_name(message: Message, suffix = 'media', ext = 'jpg') -> s
 
 
 def get_curr_date() -> str:
-    return dt.now().strftime('%Y-%m-%d')
+    return dt.now().strftime(DATE_FORMAT)
 
 
 def one_line_note() -> bool:
@@ -796,8 +835,8 @@ def bold(text: str) -> str:
 
 
 def note_from_message(message: Message):
-    msg_date = message['date'].strftime('%Y-%m-%d')
-    msg_time = message['date'].strftime('%H:%M:%S')
+    msg_date = message['date'].strftime(DATE_FORMAT)
+    msg_time = message['date'].strftime(TIME_FORMAT)
     note = Note(date=msg_date, time=msg_time)
     return note
 
