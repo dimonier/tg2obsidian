@@ -581,7 +581,7 @@ def get_open_graph_props(page: str) -> dict:
         m = soup.find("meta", attrs={"name": "description"})
         if m:
             props['description'] = m['content']
-    if not 'title' in props:
+    if not 'title' in props and soup.title:
         props['title'] = soup.title.string
 
     return props
