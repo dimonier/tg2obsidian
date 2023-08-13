@@ -25,6 +25,7 @@
 
 ## Установка и настройка
 
+Расширенные инструкции см. на странице [extended_tg2obsidian_manual.ru](extended_tg2obsidian_manual.ru.md)
 1. Установите [Python](https://python.org) 3.10+.
 2. Установите требуемые зависимости:
 
