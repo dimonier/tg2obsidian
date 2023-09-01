@@ -63,3 +63,10 @@ negative_tag = '#негатив'
 # When the bot receives the /start command, it replies with the ID of the chat.
 # This setting is not in effect yet.
 # my_chat_id = -xxxxxxxxx
+
+#tracker = {
+#    'path': r'path to tracker folder', #change as required or remove to use inbox_path
+#    'activities' : {
+#        'read' : ( 'Чтение', '- {cur_date} {cur_time} читал {text}\n')
+#    }
+#}
