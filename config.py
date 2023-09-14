@@ -30,12 +30,8 @@ whisper_model = 'medium'
 # The following set of options define file name of the note where Telegram posts appear.
 # Resulting file name consists of concatenated prefix, date, and postfix.
 # With the default config values, full note name would be like Telegram-2023-01-02_Notes.md.
-# To omit either prefix or postfix (or both), comment out corresponding option with # or edit it to be empty.
-# To omit the date part and always put new messages in a single static file, comment out note_date option
-# or edit it to be empty.
-note_prefix = 'Telegram-'
-note_date = True
-note_postfix = '_Notes'
+# note_name_template = 'Telegram-{date}_Notes'
+note_name_template = 'Telegram-Notes'
 
 # The following parameter sets logging level:
 # 0 - Disable any logging. The only traces of the program are notes and files in the vault.

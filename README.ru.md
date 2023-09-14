@@ -30,9 +30,7 @@
 2. Установите требуемые зависимости:
 
 ```shell
-pip install aiogram
-pip install beautifulsoup4
-pip install lxml
+pip install -r requirements.txt
 ```
 
 3. Если требуется распознавать голосовые сообщения, установите модуль [Whisper](https://github.com/openai/whisper):
