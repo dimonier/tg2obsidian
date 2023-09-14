@@ -337,6 +337,7 @@ def get_forward_info(m: Message) -> str:
 
     return result
 
+
 def log_message(message):
     # Saving of the whole message into the incoming message log just in case
     if debug_log:
@@ -344,30 +345,22 @@ def log_message(message):
         curr_time = dt.now().strftime('%H:%M:%S')
         file_name = 'messages-' + curr_date + '.txt'
         with open(file_name, 'a', encoding='UTF-8') as f:
-            print(curr_time + '  ', list(message), '\n', file = f)
+            print(curr_time + '  ', list(message), '\n', file=f)
         log_debug(f'Message content saved to {file_name}')
 
 
-def get_note_file_name_parts(curr_date):
-    filename_part1 = config.note_prefix if 'note_prefix' in dir(config) else ''
-    filename_part3 = config.note_postfix if 'note_postfix' in dir(config) else ''
-    filename_part2 = curr_date if 'note_date' in dir(config) and config.note_date is True else ''
-    return [filename_part1, filename_part2, filename_part3]
-
 def get_note_name(curr_date) -> str:
-    parts = get_note_file_name_parts(curr_date)
-    return os.path.join(config.inbox_path, ''.join(parts) + '.md')
+    note_name = config.note_name_template.format(date=curr_date)
+    return os.path.join(config.inbox_path, note_name + '.md')
 
 
-def create_media_file_name(message: Message, suffix = 'media', ext = 'jpg') -> str:
+def create_media_file_name(message: Message, suffix='media', ext='jpg') -> str:
     # ToDo: переделать на дату отправки сообщения
     curr_date = get_curr_date()
-    parts = get_note_file_name_parts(curr_date)
     # ToDo: добавить в имя файлаusername исходного канала или пользователя
     # Если присутствует forward_from - оттуда, иначе из from
 
-    # Строим среднюю часть имени без лишних - и _
-    note_name = re.sub("[-_]+", "-", f'{parts[0]}{parts[2]}'.strip('-_'))
+    note_name = get_note_name(curr_date)
 
     return f'{curr_date}_{note_name}_{suffix}.{ext}'
 
@@ -377,7 +370,7 @@ def get_curr_date() -> str:
 
 
 def one_line_note() -> bool:
-    one_line_note = False if 'one_line_note' not in dir(config) or config.one_line_note == False else True
+    one_line_note = False if 'one_line_note' not in dir(config) or config.one_line_note is False else True
     return one_line_note
 
 
@@ -385,8 +378,10 @@ def format_messages() -> bool:
     format_messages = True if 'format_messages' not in dir(config) or config.format_messages else False
     return format_messages
 
+
 def create_link_info() -> bool:
     return False if 'create_link_info' not in dir(config) else config.create_link_info
+
 
 def save_message(note: Note) -> None:
     curr_date = note.date
@@ -402,6 +397,7 @@ def save_message(note: Note) -> None:
     with open(get_note_name(curr_date), 'a', encoding='UTF-8') as f:
         f.write(note_text)
 
+
 def check_if_task(note_body) -> str:
     is_task = False
     for keyword in config.task_keywords:
@@ -409,12 +405,14 @@ def check_if_task(note_body) -> str:
     if is_task: note_body = '- [ ] ' + note_body
     return note_body
 
+
 def check_if_negative(note_body) -> str:
     is_negative = False
     for keyword in config.negative_keywords:
         if keyword.lower() in note_body.lower(): is_negative = True
     if is_negative: note_body += f'\n{config.negative_tag}'
     return note_body
+
 
 # returns index of a first non ws character in a string
 def content_index(c: str) -> int:
@@ -425,6 +423,7 @@ def content_index(c: str) -> int:
        ret += 1
     return -1
 
+
 #returns (ws?, content?, ws?)
 def partition_string(text: str) -> tuple:
     start = content_index(text)
@@ -434,19 +433,23 @@ def partition_string(text: str) -> tuple:
     end = len(text) if end == -1 else len(text) - end
     return (text[:start], text[start:end], text[end:])
 
+
 def to_u16(text: str) -> bytes:
     return text.encode('utf-16-le')
+
 
 def from_u16(text: bytes) -> str:
     return text.decode('utf-16-le')
 
 
-formats = {'bold': ('**', '**'),
-           'italic': ('_', '_'),
-           'underline': ('<u>', '</u>'),
-           'strikethrough': ('~~', '~~'),
-           'code': ('`', '`'),
+formats = {
+    'bold': ('**', '**'),
+    'italic': ('_', '_'),
+    'underline': ('<u>', '</u>'),
+    'strikethrough': ('~~', '~~'),
+    'code': ('`', '`'),
 }
+
 
 def parse_entities(text: bytes,
     entities: list[MessageEntity],
@@ -513,6 +516,7 @@ def parse_entities(text: bytes,
         formatted_note += from_u16(text[offset:end])
     return formatted_note
 
+
 def is_single_url(message: Message) -> bool:
     # assuming there is atleast one entity
     entities = message['entities']
@@ -528,9 +532,11 @@ def is_single_url(message: Message) -> bool:
             return False
     return True
 
+
 async def download(url, session: aiohttp.ClientSession) -> str:
     async with session.get(url) as response:
         return await response.text()
+
 
 def get_open_graph_props(page: str) -> dict:
     props = {}
