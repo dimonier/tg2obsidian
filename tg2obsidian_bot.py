@@ -17,18 +17,17 @@ from bs4 import BeautifulSoup
 from pytz import timezone
 import urllib.request
 
-from aiogram import Bot, Dispatcher, F, types, Router
-from aiogram.filters import Filter, Command, CommandStart
+from aiogram import Bot, Dispatcher, F, types
+from aiogram.filters import Filter, Command
 from aiogram.types import ContentType, File, Message, MessageEntity, Poll, PollAnswer
 from aiogram.types.reaction_type_emoji import ReactionTypeEmoji
 from aiogram.enums import ParseMode
 from aiogram.methods.set_message_reaction import SetMessageReaction
-#from aiogram.utils import executor
 
 import config
 
 bot = Bot(token = config.token, parse_mode=ParseMode.HTML)
-router = Router()
+# router = Router()
 dp = Dispatcher()
 
 class Note:
@@ -55,11 +54,13 @@ if config.recognize_voice:
     import gc
     print('Prepared for speech-to-text recognition')
 
-#Handlers
-@router.message(CommandStart())
+# Handlers
+@dp.message(Command("start"))
 async def send_welcome(message: types.Message):
-    log_basic(f'Starting chat with the user @{message.from_user.username} ({message.from_user.first_name} {message.from_user.last_name}, user_id = {message.from_id}), chat_id = {message.chat.id} ({message.chat.title})')
-    reply_text = f'Hello {message.from_user.full_name}!\n\nI`m a private bot, I save messages from a private Telegram group to Obsidian inbox.\n\nYour Id: {message.from_id}\nThis chat Id: {message.chat.id}\n'
+    log_basic(
+        f"Starting chat with the user @{message.from_user.username} ({message.from_user.first_name} {message.from_user.last_name}, user_id = {message.from_user.id}), chat_id = {message.chat.id} ({message.chat.title})"
+    )
+    reply_text = f"Hello {message.from_user.full_name}!\n\nI`m a private bot, I save messages from a private Telegram group to Obsidian inbox.\n\nYour Id: {message.from_user.id}\nThis chat Id: {message.chat.id}\n"
     await message.reply(reply_text)
 
 @dp.message(Command("help"))
@@ -71,10 +72,10 @@ async def help(message: types.Message):
     '''
     await message.reply(reply_text)
 
-#@dp.message(content_types=[ContentType.VOICE])
-@router.message(F.voice)
+# @dp.message(content_types=[ContentType.VOICE])
+@dp.message(F.voice)
 async def handle_voice_message(message: Message):
-#    if message.chat.id != config.my_chat_id: return
+    if message.chat.id != config.my_chat_id: return
     log_basic(f'Received voice message from @{message.from_user.username}')
     log_message(message)
     if not config.recognize_voice:
@@ -101,10 +102,10 @@ async def handle_voice_message(message: Message):
     os.remove(file_full_path)
 
 
-#@dp.message_handler(content_types=[ContentType.AUDIO])
-@router.message(F.audio)
+# @dp.message_handler(content_types=[ContentType.AUDIO])
+@dp.message(F.audio)
 async def handle_audio(message: Message):
-#    if message.chat.id != config.my_chat_id: return
+    if message.chat.id != config.my_chat_id: return
     log_basic(f'Received audio file from @{message.from_user.username}')
     log_message(message)
     if not config.recognize_voice:
@@ -128,7 +129,7 @@ async def handle_audio(message: Message):
         await answer_message(message, note_stt)
     except Exception as e:
         await answer_message(message, f'🤷‍♂️ {e}')
-    # Добавляем подпись, если есть, и имя файла
+    # Add label, if any, and a file name
     if message.caption != None:
         file_details = f'{bold(message.caption)} ({message.audio.file_name})'
     else:
@@ -139,10 +140,10 @@ async def handle_audio(message: Message):
     os.remove(file_full_path)
 
 
-#@dp.message_handler(content_types=[ContentType.PHOTO])
+# @dp.message_handler(content_types=[ContentType.PHOTO])
 @dp.message(F.photo)
 async def handle_photo(message: Message):
-#    if message.chat.id != config.my_chat_id: return
+    if message.chat.id != config.my_chat_id: return
     log_basic(f'Received photo from @{message.from_user.username}')
     log_message(message)
     note = note_from_message(message)
@@ -158,10 +159,10 @@ async def handle_photo(message: Message):
     note.text=photo_and_caption
     save_message(note)
 
-#@dp.message_handler(content_types=[ContentType.DOCUMENT])
-@router.message(F.document)
+# @dp.message_handler(content_types=[ContentType.DOCUMENT])
+@dp.message(F.document)
 async def handle_document(message: Message):
-#    if message.chat.id != config.my_chat_id: return
+    if message.chat.id != config.my_chat_id: return
     file_name = unique_filename(message.document.file_name, config.photo_path)
     log_basic(f'Received document {file_name} from @{message.from_user.username}')
     log_message(message)
@@ -177,7 +178,7 @@ async def handle_document(message: Message):
         return
 
     if config.recognize_voice and message.document.mime_type.split('/')[0] == 'audio':
-    # Если mime type = "audio/*", распознаем речь аналогично ContentType.AUDIO
+    # if mime type = "audio/*", recognize it like ContentType.AUDIO
         await bot.send_chat_action(chat_id=message.from_user.id, action=types.ChatActions.TYPING)
 
         file_full_path = os.path.join(config.photo_path, file_name)
@@ -186,7 +187,7 @@ async def handle_document(message: Message):
             await answer_message(message, note_stt)
         except Exception as e:
             await answer_message(message, f'🤷‍♂️ {e}')
-        # Добавляем подпись, если есть, и имя файла
+        # Add label, if any, and a file name
         if message.caption != None:
             file_details = f'{bold(message.caption)} ({file_name})'
         else:
@@ -201,10 +202,10 @@ async def handle_document(message: Message):
     save_message(note)
 
 
-#@dp.message_handler(content_types=[ContentType.CONTACT])
-@router.message(F.contact)
+# @dp.message_handler(content_types=[ContentType.CONTACT])
+@dp.message(F.contact)
 async def handle_contact(message: Message):
-#    if message.chat.id != config.my_chat_id: return
+    if message.chat.id != config.my_chat_id: return
     log_basic(f'Received contact from @{message.from_user.username}')
     log_message(message)
     note = note_from_message(message)
@@ -213,10 +214,10 @@ async def handle_contact(message: Message):
     save_message(note)
 
 
-#@dp.message_handler(content_types=[ContentType.LOCATION])
-@router.message(F.location)
+# @dp.message_handler(content_types=[ContentType.LOCATION])
+@dp.message(F.location)
 async def handle_location(message: Message):
-#    if message.chat.id != config.my_chat_id: return
+    if message.chat.id != config.my_chat_id: return
     log_basic(f'Received location from @{message.from_user.username}')
     log_message(message)
     print(f'Got location')
@@ -225,10 +226,10 @@ async def handle_location(message: Message):
     save_message(note)
 
 
-#@dp.message_handler(content_types=[ContentType.ANIMATION])
-@router.message(F.animation)
+# @dp.message_handler(content_types=[ContentType.ANIMATION])
+@dp.message(F.animation)
 async def handle_animation(message: Message):
-#    if message.chat.id != config.my_chat_id: return
+    if message.chat.id != config.my_chat_id: return
     log_message(message)
     file_name = unique_filename(message.document.file_name, config.photo_path)
     log_basic(f'Received animation {file_name} from @{message.from_user.username}')
@@ -244,10 +245,10 @@ async def handle_animation(message: Message):
     save_message(note)
 
 
-#@dp.message_handler(content_types=[ContentType.VIDEO])
-@router.message(F.video)
+# @dp.message_handler(content_types=[ContentType.VIDEO])
+@dp.message(F.video)
 async def handle_video(message: Message):
-#    if message.chat.id != config.my_chat_id: return
+    if message.chat.id != config.my_chat_id: return
     log_message(message)
     file_name = unique_filename(message.video.file_name, config.photo_path)
     log_basic(f'Received video {file_name} from @{message.from_user.username}')
@@ -262,10 +263,10 @@ async def handle_video(message: Message):
     save_message(note)
 
 
-#@dp.message_handler(content_types=[ContentType.VIDEO_NOTE])
-@router.message(F.video_note)
+# @dp.message_handler(content_types=[ContentType.VIDEO_NOTE])
+@dp.message(F.video_note)
 async def handle_video_note(message: Message):
-#    if message.chat.id != config.my_chat_id: return
+    if message.chat.id != config.my_chat_id: return
     log_message(message)
     file_name = unique_indexed_filename(create_media_file_name(message.video_note, 'video_note', 'mp4'), config.photo_path)
     log_basic(f'Received video note from @{message.from_user.username}')
@@ -280,41 +281,41 @@ async def handle_video_note(message: Message):
     save_message(note)
 
 
-#@dp.message_handler(content_types=[ContentType.POLL])
+# @dp.message_handler(content_types=[ContentType.POLL])
 @dp.poll()
 async def handle_poll(message: types.Poll):
-#    if message.chat.id != config.my_chat_id: return
+    if message.chat.id != config.my_chat_id: return
     log_message(message)
     print(f'Got poll')
 
 @dp.poll_answer()
-#@router.poll_answer()
 async def handle_poll_answer(poll_answer: types.PollAnswer):
-#    if message.chat.id != config.my_chat_id: return
+    if message.chat.id != config.my_chat_id: return
     log_message(poll_answer)
     print(f'Got poll answer')
 
-#@dp.message_handler()
+# @dp.message_handler()
 @dp.message()
 async def process_message(message: types.Message):
-#    if message.chat.id != config.my_chat_id: return
+    if message.chat.id != config.my_chat_id: return
     log_basic(f'Received a message from @{message.from_user.username}')
     log_message(message)
     note = note_from_message(message)
     forward_info = get_forward_info(message)
 
     if message.photo:
-        # обрабатывается выше в другой функции, сюда управление не доходит
-        log_basic(f'Detected a photo')
-        photo = message.photo[-1]
-        file_name = unique_indexed_filename(create_media_file_name(message, 'pic', 'jpg'), config.photo_path) # or photo.file_id + '.jpg'
-        print(f'Got photo: {file_name}')
-        photo_file = await bot.get_file(photo.file_id)
-        result = await handle_file(file=photo_file, file_name=file_name, path=config.photo_path)
-        print(f'Success: {result}')
+        # processed above in another function, this code is never reached
+        pass
+    #     log_basic(f'Detected a photo')
+    #     photo = message.photo[-1]
+    #     file_name = unique_indexed_filename(create_media_file_name(message, 'pic', 'jpg'), config.photo_path) # or photo.file_id + '.jpg'
+    #     print(f'Got photo: {file_name}')
+    #     photo_file = await bot.get_file(photo.file_id)
+    #     result = await handle_file(file=photo_file, file_name=file_name, path=config.photo_path)
+    #     print(f'Success: {result}')
 
-        photo_and_caption = f'{forward_info}![[{file_name}]]\n{await embed_formatting_caption(message)}'
-        note.text=photo_and_caption
+    #     photo_and_caption = f'{forward_info}![[{file_name}]]\n{await embed_formatting_caption(message)}'
+    #     note.text=photo_and_caption
 
     elif message.sticker:
         log_basic(f'Detected a sticker')
@@ -560,11 +561,10 @@ def create_media_file_name(message: Message, suffix = 'media', ext = 'jpg') -> s
     
     note_name = config.note_name_template.format(year=year, month=month, day=day)
     
-    # Удаляем лишние символы из имени файла
+    # Remove unnecessary characters from the file name
     note_name = re.sub(r'[^\w\-_\.]', '_', note_name)
     
     return f'{curr_date}_{note_name}_{suffix}.{ext}'
-
 
 
 def get_curr_date() -> str:
@@ -620,7 +620,7 @@ def content_index(c: str) -> int:
        ret += 1
     return -1
 
-#returns (ws?, content?, ws?)
+# returns (ws?, content?, ws?)
 def partition_string(text: str) -> tuple:
     start = content_index(text)
     if start == -1:
@@ -944,7 +944,7 @@ async def get_telegram_username(user_id: int) -> str:
 
 
 async def answer_message(message: Message, answer_text: str):
-    # Ограничение Telegram - не более 4096 знаков в сообщении
+    # Telegram limit is 4096 characters in a message
     msg_len_limit = 4000
     if len(answer_text) <= msg_len_limit:
         await message.answer(answer_text)
@@ -959,38 +959,38 @@ async def answer_message(message: Message, answer_text: str):
 
 
 def text_to_chunks(text, max_len):
-    """ Принимает строку text и делит её на части длиной до max_len. Возвращает список с частями"""
+    """ Accepts a string text and splits it into parts of up to max_len characters. Returns a list of parts"""
     sentences = [piece.strip() + '.' for piece in text.split('.')]
     texts = []
     chunk = ''
 
     for sentence in sentences:
         if len(sentence) > max_len or len(chunk + ' ' + sentence) > max_len:
-            # Это предложение не влезает в обрабатываемый фрагмент
+            # This sentence does not fit into the current chunk
             if len(chunk) > 0:
-                # Если во фрагменте уже что-то есть, сохраним его
+                # If there is something in the chunk, save it
                 texts.append(chunk.strip(' '))
                 chunk = ''
-            # Фрагмент пустой, начинаем наполнять
+            # Chunk is empty, start filling it
             if len(sentence) > max_len:
-                # Если текущее предложение слишком длинное, засунем во фрагмент только, сколько влезет
+                # If the current sentence is too long, put only as much as fits into the chunk
                 words = sentence.split(' ')
                 for word in words:
                     if len(chunk + ' ' + word) < max_len:
-                        # Это слово влезает в обрабатываемый фрагмент, можно добавлять
+                        # This word fits into the current chunk, add it
                         chunk += ' ' + word
                     else:
-                        # Это слово не влезает в обрабатываемый фрагмент
+                        # This word does not fit into the current chunk
                         texts.append(chunk.strip(' '))
                         chunk = word
             else:
-                # Фрагмент был пустой, так что просто засунем предложение в него
+                # Chunk was empty, so just add the sentence to it
                 chunk = sentence
 
         else:
-            # Это предложение влезает в обрабатываемый фрагмент, можно добавлять
+            # This sentence fits into the current chunk, add it
             chunk += ' ' + sentence
-    # Сохраняем последний фрагмент, если в нём что-то есть
+    # Save the last chunk, if it is not empty
     if len(chunk) > 0: texts.append(chunk.strip(' '))
     return texts
 
