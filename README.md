@@ -16,7 +16,7 @@ This readme is also available [in Russian](README.ru.md).
 
 ## Features
 
-- All messages are grouped by date — one note per day — or stored in a single note.
+- All messages are grouped by date — one note per day/month/year (according to the note name template) — or stored in a single note.
 - Each message in a note has a header with a date and time stamp.
 - Formatting of messages and captions is preserved or ignored depending on settings.
 - For forwarded messages, information about the origin is added.
@@ -26,6 +26,7 @@ This readme is also available [in Russian](README.ru.md).
 - It is possible to convert notes with certain keywords into a task.
 - It is possible to tag notes with certain keywords.
 - It is possible to recognize speech from voice notes and audio messages. In this case, the Bot sends the recognized text as a response to the original message.
+- Once a message is processed, the bot adds OK emoji to it.
 
 ## Set up
 
@@ -33,26 +34,18 @@ This readme is also available [in Russian](README.ru.md).
 2. install script dependencies:
 
 ```shell
-pip install aiogram
-pip install beautifulsoup4
-pip install lxml
+pip install -r requirements.txt
 ```
 
-3. Install [Whisper](https://github.com/openai/whisper) and Pytorch modules if you need voice messages get recognized to text:
-
-```shell
-pip install -U openai-whisper
-pip install torch
-```
-
-4. Install compiled [FFMPEG](https://ffmpeg.org/download.html) and add the path to the executable (in Windows — ffmpeg.exe) to the `path` environment variable. Go to the folder containing this script and make sure that `ffmpeg.exe` could be started there.
-5. Create your own bot using https://t.me/BotFather
-6. Paste the token received from `@botfather` into the appropriate parameter in `config.py` and change the rest of the parameters in `config.py` as desired.
-7. (Optional) Add the bot created above to a private Telegram group and make it administrator so it can read messages.
+3. Install compiled [FFMPEG](https://ffmpeg.org/download.html) and add the path to the executable (in Windows — ffmpeg.exe) to the `path` environment variable. Go to the folder containing this script and make sure that `ffmpeg.exe` could be started there.
+4. Create your own bot using https://t.me/BotFather
+5. Paste the token received from `@botfather` into the appropriate parameter in `config.py` and change the rest of the parameters in `config.py` as desired.
+6. (Optional) Add the bot created above to a private Telegram group and make it administrator so it can read messages.
+7. Send `/start` command to your bot in Telegram. The bot will reply with your ID. Paste it into `my_chat_id` parameter in `config.py`.
 
 ## Usage
 
-1. Send or forward messages that should go to your Obsidian vault to the private Telegram group or directly to your Telegram bot.
+1. Send or forward messages that should go to your Obsidian vault to your Telegram bot or to the private Telegram group where you have added the bot to.
 
 2. Run Bot:
 ```shell.
