@@ -10,6 +10,7 @@ import aiohttp
 import time
 import asyncio
 import aiofiles
+import pytesseract
 
 from pathlib import Path
 from datetime import datetime as dt
@@ -156,7 +157,40 @@ async def handle_photo(message: Message):
 
     forward_info = get_forward_info(message)
     photo_and_caption = f'{forward_info}![[{file_name}]]\n{await embed_formatting_caption(message)}'
-    note.text=photo_and_caption
+    
+    # Распознавание текста с фото
+    try:
+        from PIL import Image
+        
+        img = Image.open(os.path.join(config.photo_path, file_name))
+        
+        # Попытка распознать русский текст
+        recognized_text_rus = pytesseract.image_to_string(img, lang='rus')
+        confidence_rus = pytesseract.image_to_data(img, lang='rus', output_type=pytesseract.Output.DICT)['conf']
+        avg_confidence_rus = sum(filter(lambda x: x != -1, confidence_rus)) / len(confidence_rus)
+        
+        # Если уверенность низкая, попробуем распознать английский текст
+        if avg_confidence_rus < 50:
+            recognized_text_eng = pytesseract.image_to_string(img, lang='eng')
+            confidence_eng = pytesseract.image_to_data(img, lang='eng', output_type=pytesseract.Output.DICT)['conf']
+            avg_confidence_eng = sum(filter(lambda x: x != -1, confidence_eng)) / len(confidence_eng)
+            
+            if avg_confidence_eng > avg_confidence_rus:
+                recognized_text = recognized_text_eng
+                # lang = "английский"
+            else:
+                recognized_text = recognized_text_rus
+                # lang = "русский"
+        else:
+            recognized_text = recognized_text_rus
+            # lang = "русский"
+        
+        if recognized_text.strip():
+            photo_and_caption += f'\n\n{recognized_text}'
+    except Exception as e:
+        log_basic(f'Ошибка при распознавании текста: {e}')
+    
+    note.text = photo_and_caption
     save_message(note)
 
 # @dp.message_handler(content_types=[ContentType.DOCUMENT])
