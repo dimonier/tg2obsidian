@@ -51,8 +51,23 @@ if 'log_level' in dir(config) and config.log_level >= 1:
 
 if config.recognize_voice:
     import torch
+    import whisper
     import gc
-    print('Prepared for speech-to-text recognition')
+    
+    whisper_device = getattr(config, 'whisper_device', 'cpu')
+    
+    # Явно указываем torch использовать CPU
+    if whisper_device == 'cpu':
+        torch.cuda.is_available = lambda : False
+    
+    model = whisper.load_model(config.whisper_model)
+    
+    if whisper_device == 'cuda' and torch.cuda.is_available():
+        model = model.to('cuda')
+    else:
+        model = model.to('cpu')
+
+    print(f'Prepared for speech-to-text recognition on {whisper_device}')
 
 # Handlers
 @dp.message(Command("start"))
@@ -72,17 +87,16 @@ async def help(message: types.Message):
     '''
     await message.reply(reply_text)
 
-# @dp.message(content_types=[ContentType.VOICE])
-@dp.message(F.voice)
+# @dp.message(F.voice)
 async def handle_voice_message(message: Message):
     if message.chat.id != config.my_chat_id: return
-    log_basic(f'Received voice message from @{message.from_user.username}')
+    log_basic(f'Received (?) voice message from @{message.from_user.username}')
     log_message(message)
     if not config.recognize_voice:
         log_basic(f'Voice recognition is turned OFF')
         return
     note = note_from_message(message)
-    voice = await message.voice.get_file()
+    voice = await bot.get_file(message.voice.file_id)
     path = os.path.dirname(__file__)
 
     await handle_file(file=voice, file_name=f"{voice.file_id}.ogg", path=path)
@@ -356,6 +370,7 @@ async def process_message(message: types.Message):
         except Exception as e:
             await answer_message(message, f'🤷‍♂️ {e}')
         os.remove(file_full_path)
+
     elif message.video_note:
         log_basic(f'Detected video note')
         if not config.recognize_voice:
@@ -825,22 +840,14 @@ async def embed_formatting_caption(message: Message) -> str:
     return formatted_note
 
 async def stt(audio_file_path) -> str:
-    import whisper
-    model = config.whisper_model if 'whisper_model' in dir(config) else 'medium'
-    whisper_device = 'cpu' if 'whisper_device' not in dir(config) else config.whisper_device
-    if whisper_device == 'cpu':
-        model = whisper.load_model(model)
-    else:
-        model = whisper.load_model(model).to(whisper_device)
-
-    log_basic(f'Audio recognition started on {whisper_device}')
-    result = model.transcribe(audio_file_path, verbose = False, language = 'ru')
-    if whisper_device == 'cuda':
+    log_basic(f'Starting audio recognition on {whisper_device}')
+    
+    result = model.transcribe(audio_file_path, verbose=False, language='ru')
+    
+    if whisper_device == 'cuda' and torch.cuda.is_available():
         # Clear GPU memory
-        del model
-        gc.collect()
         torch.cuda.empty_cache()
-
+    
     if hasattr(result['segments'], '__iter__'):
         rawtext = ' '.join([segment['text'].strip() for segment in result['segments']])
         rawtext = re.sub(" +", " ", rawtext)
