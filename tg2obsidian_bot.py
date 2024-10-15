@@ -184,7 +184,7 @@ async def handle_document(message: Message):
     print(f'Got document: {file_name}')
 
     try:
-        file = await message.document.get_file()
+        file = await bot.get_file(message.document.file_id)
         await handle_file(file=file, file_name=file_name, path=config.photo_path)
     except Exception as e:
         log_basic(f'Exception: {e}')
@@ -245,12 +245,15 @@ async def handle_location(message: Message):
 async def handle_animation(message: Message):
     if message.chat.id != config.my_chat_id: return
     log_message(message)
-    file_name = unique_filename(message.document.file_name, config.photo_path)
+    if message.document.file_name:
+        file_name = unique_filename(message.document.file_name, config.photo_path)
+    else:
+        file_name = unique_indexed_filename(create_media_file_name(message, 'animation', 'mp4'), config.photo_path)
     log_basic(f'Received animation {file_name} from @{message.from_user.username}')
     print(f'Got animation: {file_name}')
     note = note_from_message(message)
 
-    file = await message.document.get_file()
+    file = await bot.get_file(message.document.file_id)
 #    file_path = file.file_path
     await handle_file(file=file, file_name=file_name, path=config.photo_path)
 
@@ -264,12 +267,15 @@ async def handle_animation(message: Message):
 async def handle_video(message: Message):
     if message.chat.id != config.my_chat_id: return
     log_message(message)
-    file_name = unique_filename(message.video.file_name, config.photo_path)
+    if message.video.file_name:
+        file_name = unique_filename(message.video.file_name, config.photo_path)
+    else:
+        file_name = unique_indexed_filename(create_media_file_name(message, 'video', 'mp4'), config.photo_path)
     log_basic(f'Received video {file_name} from @{message.from_user.username}')
     print(f'Got video: {file_name}')
     note = note_from_message(message)
 
-    file = await message.video.get_file()
+    file = await bot.get_file(message.video.file_id)
 #    file_path = file.file_path
     await handle_file(file=file, file_name=file_name, path=config.photo_path)
 
@@ -287,7 +293,7 @@ async def handle_video_note(message: Message):
     print(f'Got video note: {file_name}')
     note = note_from_message(message)
 
-    file = await message.video_note.get_file()
+    file = await bot.get_file(message.video_note.file_id)
 #    file_path = file.file_path
     await handle_file(file=file, file_name=file_name, path=config.photo_path)
 
