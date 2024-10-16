@@ -19,6 +19,14 @@ create_link_info = True
 # Time zone for time stamp formatting
 time_zone = 'Europe/Moscow'
 
+# If True, optical character recognition (OCR) will be performed on images.
+# This requires tesseract (https://github.com/tesseract-ocr/tessdoc) to be installed and added to PATH
+# If False, OCR will not be applied to received images.
+ocr = False
+
+# One or more languages to use for OCR. Defaults to 'eng'. Few languages should be delimited with +.
+ocr_languages = 'rus+eng'
+
 # If True, voice messages will be recognized to text.
 # This requires Whisper ( https://github.com/openai/whisper ), FFMPEG, Python and PyTorch to be installed
 # on the machine where the script is running.

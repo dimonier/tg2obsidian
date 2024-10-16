@@ -49,6 +49,16 @@ if 'log_level' in dir(config) and config.log_level >= 1:
     logging.basicConfig(format='%(asctime)s %(levelname)s %(message)s', level=logging.INFO, filename = 'bot.log', encoding = 'UTF-8', datefmt = '%Y-%m-%d %H:%M:%S')
     log = logging.getLogger()
 
+if config.ocr:
+    import pytesseract
+    from PIL import Image
+
+    if config.ocr_languages:
+        ocr_languages = config.ocr_languages
+    else:
+        ocr_languages = 'eng'
+    print(f'Prepared for OCR in {ocr_languages}')
+
 if config.recognize_voice:
     import torch
     import whisper
@@ -170,7 +180,28 @@ async def handle_photo(message: Message):
 
     forward_info = get_forward_info(message)
     photo_and_caption = f'{forward_info}![[{file_name}]]\n{await embed_formatting_caption(message)}'
-    note.text=photo_and_caption
+    
+    # Распознавание текста с фото
+    if config.ocr:
+        try:
+            image_path = os.path.join(config.photo_path, file_name)
+            img = Image.open(image_path)
+
+            recognized_text = pytesseract.image_to_string(img, lang=ocr_languages)
+
+            if recognized_text.strip():
+                photo_and_caption += f'\n{recognized_text}'
+        except Exception as e:
+            error_message = f'Error during text recognition from {image_path} in {ocr_languages}: {e}'
+            log_basic(error_message)
+            await answer_message(message, f'🤷‍♂️ {error_message}')
+
+        try:
+            await answer_message(message, recognized_text)
+        except Exception as e:
+            await answer_message(message, f'🤷‍♂️ {e}')
+
+    note.text = photo_and_caption
     save_message(note)
 
 # @dp.message_handler(content_types=[ContentType.DOCUMENT])
