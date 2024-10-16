@@ -178,27 +178,29 @@ async def handle_photo(message: Message):
         
         img = Image.open(os.path.join(config.photo_path, file_name))
         
-        # Попытка распознать русский текст
-        recognized_text_rus = pytesseract.image_to_string(img, lang='rus')
-        confidence_rus = pytesseract.image_to_data(img, lang='rus', output_type=pytesseract.Output.DICT)['conf']
-        avg_confidence_rus = sum(filter(lambda x: x != -1, confidence_rus)) / len(confidence_rus)
+        # # Попытка распознать русский текст
+        # recognized_text_rus = pytesseract.image_to_string(img, lang='rus')
+        # confidence_rus = pytesseract.image_to_data(img, lang='rus', output_type=pytesseract.Output.DICT)['conf']
+        # avg_confidence_rus = sum(filter(lambda x: x != -1, confidence_rus)) / len(confidence_rus)
         
-        # Если уверенность низкая, попробуем распознать английский текст
-        if avg_confidence_rus < 50:
-            recognized_text_eng = pytesseract.image_to_string(img, lang='eng')
-            confidence_eng = pytesseract.image_to_data(img, lang='eng', output_type=pytesseract.Output.DICT)['conf']
-            avg_confidence_eng = sum(filter(lambda x: x != -1, confidence_eng)) / len(confidence_eng)
+        # # Если уверенность низкая, попробуем распознать английский текст
+        # if avg_confidence_rus < 50:
+        #     recognized_text_eng = pytesseract.image_to_string(img, lang='eng')
+        #     confidence_eng = pytesseract.image_to_data(img, lang='eng', output_type=pytesseract.Output.DICT)['conf']
+        #     avg_confidence_eng = sum(filter(lambda x: x != -1, confidence_eng)) / len(confidence_eng)
             
-            if avg_confidence_eng > avg_confidence_rus:
-                recognized_text = recognized_text_eng
-                # lang = "английский"
-            else:
-                recognized_text = recognized_text_rus
-                # lang = "русский"
-        else:
-            recognized_text = recognized_text_rus
-            # lang = "русский"
-        
+        #     if avg_confidence_eng > avg_confidence_rus:
+        #         recognized_text = recognized_text_eng
+        #         # lang = "английский"
+        #     else:
+        #         recognized_text = recognized_text_rus
+        #         # lang = "русский"
+        # else:
+        #     recognized_text = recognized_text_rus
+        #     # lang = "русский"
+
+        recognized_text = pytesseract.image_to_string(img, lang='rus+eng')
+
         if recognized_text.strip():
             photo_and_caption += f'\n\n{recognized_text}'
     except Exception as e:
