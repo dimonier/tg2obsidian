@@ -331,185 +331,31 @@ async def handle_video_note(message: Message):
     note.text = f'{get_forward_info(message)}![[{file_name}]]\n{await embed_formatting_caption(message)}'
     save_message(note)
 
-
-# @dp.message_handler(content_types=[ContentType.POLL])
-@dp.poll()
-async def handle_poll(message: types.Poll):
-    if message.chat.id != config.my_chat_id: return
-    log_message(message)
-    print(f'Got poll')
+# @dp.poll()
+# async def handle_poll(poll: types.Poll):
+#     # невозможно проверить чат
+#     if poll.....id != config.my_chat_id: return
+#     log_message(poll)
+#     print(f'Got poll')
 
 @dp.poll_answer()
 async def handle_poll_answer(poll_answer: types.PollAnswer):
-    if message.chat.id != config.my_chat_id: return
+    if config.my_chat_id not in [poll_answer.voter_chat.id, poll_answer.user.id]: return
     log_message(poll_answer)
     print(f'Got poll answer')
 
-# @dp.message_handler()
 @dp.message()
 async def process_message(message: types.Message):
-    if message.chat.id != config.my_chat_id: return
+    if message.chat.id != config.my_chat_id:
+        await message.reply(f"I'm not configured to accept messages in this chat.\nIf you think I should do so, please set <b>my_chat_id</b> in config to <code>{message.chat.id}</code>")
+        return
     log_basic(f'Received a message from @{message.from_user.username}')
     log_message(message)
     note = note_from_message(message)
     forward_info = get_forward_info(message)
 
-    if message.photo:
-        # processed above in another function, this code is never reached
-        pass
-    #     log_basic(f'Detected a photo')
-    #     photo = message.photo[-1]
-    #     file_name = unique_indexed_filename(create_media_file_name(message, 'pic', 'jpg'), config.photo_path) # or photo.file_id + '.jpg'
-    #     print(f'Got photo: {file_name}')
-    #     photo_file = await bot.get_file(photo.file_id)
-    #     result = await handle_file(file=photo_file, file_name=file_name, path=config.photo_path)
-    #     print(f'Success: {result}')
-
-    #     photo_and_caption = f'{forward_info}![[{file_name}]]\n{await embed_formatting_caption(message)}'
-    #     note.text=photo_and_caption
-
-    elif message.sticker:
-        log_basic(f'Detected a sticker')
-        photo = message.sticker
-        file_name = unique_indexed_filename(create_media_file_name(message, 'pic', 'webp'), config.photo_path) # or photo.file_id + '.jpg'
-        print(f'Got sticker: {file_name}')
-        photo_file = await bot.get_file(photo.file_id)
-        result = await handle_file(file=photo_file, file_name=file_name, path=config.photo_path)
-        print(f'Success: {result}')
-
-        photo_and_caption = f'{forward_info}![[{file_name}]]\n{await embed_formatting_caption(message)}'
-        note.text=photo_and_caption
-
-    elif message.voice:
-        log_basic(f'Detected voice message')
-#        log_basic(f'Received audio file from @{message.from_user.username}')
-#        log_message(message)
-        if not config.recognize_voice:
-            log_basic(f'Voice recognition is turned OFF')
-            return
-        note = note_from_message(message)
-
-        path = os.path.dirname(__file__)
-        voice_file = await bot.get_file(message.voice.file_id)
-        voice_file_ext = message.voice.mime_type.split('/')[-1]
-        file_name=f"{message.voice.file_id}.{voice_file_ext}"
-        await handle_file(file=voice_file, file_name=file_name, path=path)
-
-        file_full_path = os.path.join(path, file_name)
-        await bot.send_chat_action(chat_id=message.from_user.id, action='typing')
-        try:
-            note_stt = await stt(file_full_path)
-            note.text = note_stt
-        except Exception as e:
-            await answer_message(message, f'🤷‍♂️ {e}')
-        try:
-            await answer_message(message, note_stt)
-        except Exception as e:
-            await answer_message(message, f'🤷‍♂️ {e}')
-        os.remove(file_full_path)
-
-    elif message.video_note:
-        log_basic(f'Detected video note')
-        if not config.recognize_voice:
-            log_basic(f'Voice recognition is turned OFF')
-            return
-        note = note_from_message(message)
-
-        path = os.path.dirname(__file__)
-        video_note_file = await bot.get_file(message.video_note.file_id)
-        video_note_file_ext = '.mp4'
-        file_name=f"{message.video_note.file_id}.{video_note_file_ext}"
-        await handle_file(file=video_note_file, file_name=file_name, path=path)
-
-        file_full_path = os.path.join(path, file_name)
-        await bot.send_chat_action(chat_id=message.from_user.id, action='typing')
-        try:
-            note_stt = await stt(file_full_path)
-            note.text = note_stt
-        except Exception as e:
-            await answer_message(message, f'🤷‍♂️ {e}')
-        try:
-            await answer_message(message, note_stt)
-        except Exception as e:
-            await answer_message(message, f'🤷‍♂️ {e}')
-        os.remove(file_full_path)
-
-    elif message.video:
-        log_basic(f'Detected video')
-        if not config.recognize_voice:
-            log_basic(f'Voice recognition is turned OFF')
-            return
-        note = note_from_message(message)
-
-        path = os.path.dirname(__file__)
-        try:
-            media_file = await bot.get_file(message.video.file_id)
-#        media_file_ext = message.audio.mime_type.split('/')[-1]
-            file_name= message.video.file_name
-            await handle_file(file=media_file, file_name=file_name, path=path)
-        except Exception as e:
-            await answer_message(message, f'🤷‍♂️ {e}')
-            note.text = f'{message.caption}\n' if message.caption else ""
-            note.text += f'🤷‍♂️ {e}: {message.video.file_name} ({message.video.file_size} bytes)'
-            save_message(note)
-            return
-        file_full_path = os.path.join(path, file_name)
-        await bot.send_chat_action(chat_id=message.from_user.id, action='typing')
-        try:
-            note_stt = await stt(file_full_path)
-            note.text = note_stt
-        except Exception as e:
-            await answer_message(message, f'🤷‍♂️ {e}')
-        try:
-            await answer_message(message, note_stt)
-        except Exception as e:
-            await answer_message(message, f'🤷‍♂️ {e}')
-        os.remove(file_full_path)
-
-    elif message.audio:
-        log_basic(f'Detected audio message')
-        if not config.recognize_voice:
-            log_basic(f'Voice recognition is turned OFF')
-            return
-        note = note_from_message(message)
-
-        path = os.path.dirname(__file__)
-        try:
-            media_file = await bot.get_file(message.audio.file_id)
-#        media_file_ext = message.audio.mime_type.split('/')[-1]
-            file_name= message.audio.file_name
-            await handle_file(file=media_file, file_name=file_name, path=path)
-        except Exception as e:
-            await answer_message(message, f'🤷‍♂️ {e}')
-            note.text = f'{message.audio.performer}\n' if message.audio.performer else ""
-            note.text = f'{message.caption}\n' if message.caption else ""
-            note.text += f'🤷‍♂️ {e}: {message.audio.file_name} ({message.audio.file_size} bytes)'
-            save_message(note)
-            return
-
-        file_full_path = os.path.join(path, file_name)
-        await bot.send_chat_action(chat_id=message.from_user.id, action='typing')
-
-        note.text = f'{message.audio.performer}\n' if message.audio.performer else ""
-
-        try:
-            note_stt = await stt(file_full_path)
-            note.text += note_stt
-        except Exception as e:
-            await answer_message(message, f'🤷‍♂️ {e}')
-        try:
-            await answer_message(message, note_stt)
-        except Exception as e:
-            await answer_message(message, f'🤷‍♂️ {e}')
-        os.remove(file_full_path)
-
-    elif message.poll:
-        log_basic(f'Detected a poll')
-        poll_options = ', '.join([option.text for option in message.poll.options])
-        note.text = f"{message.poll.question} ({poll_options})"
-    else:
-        message_body = await embed_formatting(message)
-        note.text = forward_info + message_body
+    message_body = await embed_formatting(message)
+    note.text = forward_info + message_body
 
     if message.link_preview_options:
         if message.link_preview_options.url and 'youtu' in message.link_preview_options.url:
@@ -889,7 +735,7 @@ async def stt(audio_file_path) -> str:
         rawtext = ' '.join([segment['text'].strip() for segment in result['segments']])
         rawtext = re.sub(" +", " ", rawtext)
 
-        alltext = re.sub("([\.\!\?]) ", "\\1\n", rawtext)
+        alltext = re.sub(r"([\.\!\?]) ", "\\1\n", rawtext)
         if debug_log:
             log_debug(f'Recognized: {alltext}')
         else:

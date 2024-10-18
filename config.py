@@ -73,4 +73,4 @@ negative_tag = '#негатив'
 
 # The ID of the chat the bot should read. Messages from other chats will be ignored.
 # When the bot receives the /start command, it replies with the ID of the chat.
-my_chat_id = xxxxxxxxx
+my_chat_id = 123456789
