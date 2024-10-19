@@ -97,21 +97,25 @@ async def help(message: types.Message):
     '''
     await message.reply(reply_text)
 
-# @dp.message(F.voice)
+@dp.message(F.voice)
 async def handle_voice_message(message: Message):
     if message.chat.id != config.my_chat_id: return
-    log_basic(f'Received (?) voice message from @{message.from_user.username}')
+    log_basic(f'Received voice message from @{message.from_user.username}')
     log_message(message)
     if not config.recognize_voice:
         log_basic(f'Voice recognition is turned OFF')
         return
-    note = note_from_message(message)
-    voice = await bot.get_file(message.voice.file_id)
-    path = os.path.dirname(__file__)
 
-    await handle_file(file=voice, file_name=f"{voice.file_id}.ogg", path=path)
-    file_full_path = os.path.join(path, voice.file_id + '.ogg')
-    await bot.send_chat_action(chat_id=message.from_user.id, action=types.ChatActions.TYPING)
+    note = note_from_message(message)
+
+    path = os.path.dirname(__file__)
+    voice_file = await bot.get_file(message.voice.file_id)
+    voice_file_ext = message.voice.mime_type.split('/')[-1]
+    file_name=f"{message.voice.file_id}.{voice_file_ext}"
+    await handle_file(file=voice_file, file_name=file_name, path=path)
+
+    file_full_path = os.path.join(path, file_name)
+    await react_to_message(message)
 
     try:
         note_stt = await stt(file_full_path)
@@ -124,6 +128,7 @@ async def handle_voice_message(message: Message):
         await answer_message(message, f'🤷‍♂️ {e}')
     save_message(note)
     os.remove(file_full_path)
+
 
 
 # @dp.message_handler(content_types=[ContentType.AUDIO])
@@ -147,7 +152,9 @@ async def handle_audio(message: Message):
 
     await handle_file(file=audio, file_name=f"{message.audio.file_name}", path=path)
     file_full_path = os.path.join(path, message.audio.file_name)
-    await bot.send_chat_action(chat_id=message.from_user.id, action=types.ChatActions.TYPING)
+
+    await react_to_message(message)
+
     note_stt = await stt(file_full_path)
     try:
         await answer_message(message, note_stt)
@@ -177,6 +184,8 @@ async def handle_photo(message: Message):
     photo_file = await bot.get_file(photo.file_id)
 
     await handle_file(file=photo_file, file_name=file_name, path=config.photo_path)
+
+    await react_to_message(message)
 
     forward_info = get_forward_info(message)
     photo_and_caption = f'{forward_info}![[{file_name}]]\n{await embed_formatting_caption(message)}'
@@ -222,6 +231,8 @@ async def handle_document(message: Message):
         await answer_message(message, f'🤷‍♂️ {e}')
         return
 
+    await react_to_message(message)
+
     if config.recognize_voice and message.document.mime_type.split('/')[0] == 'audio':
     # if mime type = "audio/*", recognize it like ContentType.AUDIO
         await bot.send_chat_action(chat_id=message.from_user.id, action=types.ChatActions.TYPING)
@@ -253,6 +264,7 @@ async def handle_contact(message: Message):
     if message.chat.id != config.my_chat_id: return
     log_basic(f'Received contact from @{message.from_user.username}')
     log_message(message)
+    await react_to_message(message)
     note = note_from_message(message)
     print(f'Got contact')
     note.text = await get_contact_data(message)
@@ -266,6 +278,7 @@ async def handle_location(message: Message):
     log_basic(f'Received location from @{message.from_user.username}')
     log_message(message)
     print(f'Got location')
+    await react_to_message(message)
     note = note_from_message(message)
     note.text = get_location_note(message)
     save_message(note)
@@ -285,7 +298,7 @@ async def handle_animation(message: Message):
     note = note_from_message(message)
 
     file = await bot.get_file(message.document.file_id)
-#    file_path = file.file_path
+    await react_to_message(message)
     await handle_file(file=file, file_name=file_name, path=config.photo_path)
 
     forward_info = get_forward_info(message)
@@ -307,7 +320,8 @@ async def handle_video(message: Message):
     note = note_from_message(message)
 
     file = await bot.get_file(message.video.file_id)
-#    file_path = file.file_path
+    await react_to_message(message)
+
     await handle_file(file=file, file_name=file_name, path=config.photo_path)
 
     note.text = f'{get_forward_info(message)}![[{file_name}]]\n{await embed_formatting_caption(message)}'
@@ -325,7 +339,8 @@ async def handle_video_note(message: Message):
     note = note_from_message(message)
 
     file = await bot.get_file(message.video_note.file_id)
-#    file_path = file.file_path
+    await react_to_message(message)
+
     await handle_file(file=file, file_name=file_name, path=config.photo_path)
 
     note.text = f'{get_forward_info(message)}![[{file_name}]]\n{await embed_formatting_caption(message)}'
@@ -338,11 +353,11 @@ async def handle_video_note(message: Message):
 #     log_message(poll)
 #     print(f'Got poll')
 
-@dp.poll_answer()
-async def handle_poll_answer(poll_answer: types.PollAnswer):
-    if config.my_chat_id not in [poll_answer.voter_chat.id, poll_answer.user.id]: return
-    log_message(poll_answer)
-    print(f'Got poll answer')
+# @dp.poll_answer()
+# async def handle_poll_answer(poll_answer: types.PollAnswer):
+#     if config.my_chat_id not in [poll_answer.voter_chat.id, poll_answer.user.id]: return
+#     log_message(poll_answer)
+#     print(f'Got poll answer')
 
 @dp.message()
 async def process_message(message: types.Message):
@@ -351,6 +366,8 @@ async def process_message(message: types.Message):
         return
     log_basic(f'Received a message from @{message.from_user.username}')
     log_message(message)
+
+    await react_to_message(message)
     note = note_from_message(message)
     forward_info = get_forward_info(message)
 
@@ -362,16 +379,25 @@ async def process_message(message: types.Message):
             note.text += f'\n![{message.link_preview_options.url}]({message.link_preview_options.url})\n'
 
     save_message(note)
-    await bot.set_message_reaction(chat_id=message.from_user.id, message_id=message.message_id, reaction=[{'type':'emoji', 'emoji':'👌'}])
 
 
 # Functions
 
 # Download the photo using aiohttp
 async def handle_file(file: File, file_name: str, path: str):
+    """
+    Downloads a file from Telegram and saves it to the specified path.
+
+    Parameters:
+    file (File): The file object containing the file path on Telegram's server.
+    file_name (str): The name to save the file as.
+    path (str): The directory path where the file will be saved.
+
+    Returns:
+    bool: True if the file was successfully downloaded and saved, False otherwise.
+    """
     Path(f"{path}").mkdir(parents=True, exist_ok=True)
     destination = f"{path}/{file_name}"
-#    await bot.download_file(file_path=file.file_path, destination=f"{path}/{file_name}")
     async with aiohttp.ClientSession() as session:
         async with session.get(f"https://api.telegram.org/file/bot{config.token}/{file.file_path}") as resp:
             if resp.status == 200:
@@ -380,6 +406,16 @@ async def handle_file(file: File, file_name: str, path: str):
                 await f.close()
     return (resp.status == 200)
 
+async def react_to_message(message: Message):
+    """
+    Reacts to a message by setting an emoji reaction and sending a typing action.
+
+    Parameters:
+    message (Message): The message object to which the bot will react.
+    """
+    await bot.set_message_reaction(chat_id=message.from_user.id, message_id=message.message_id, reaction=[{'type':'emoji', 'emoji':'👌'}])
+    await bot.send_chat_action(chat_id=message.from_user.id, action='typing')
+    return
 
 def get_forward_info(m: Message) -> str:
     # If the message is forwarded, extract forward info and make up forward header
