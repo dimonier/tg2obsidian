@@ -197,18 +197,18 @@ async def handle_photo(message: Message):
             img = Image.open(image_path)
 
             recognized_text = pytesseract.image_to_string(img, lang=ocr_languages)
-
             if recognized_text.strip():
                 photo_and_caption += f'\n{recognized_text}'
+                try:
+                    await answer_message(message, recognized_text)
+                except Exception as e:
+                    await answer_message(message, f'🤷‍♂️ {e}')
+            else:
+                log_basic("No text recognized on the photo.")
         except Exception as e:
             error_message = f'Error during text recognition from {image_path} in {ocr_languages}: {e}'
             log_basic(error_message)
             await answer_message(message, f'🤷‍♂️ {error_message}')
-
-        try:
-            await answer_message(message, recognized_text)
-        except Exception as e:
-            await answer_message(message, f'🤷‍♂️ {e}')
 
     note.text = photo_and_caption
     save_message(note)

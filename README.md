@@ -68,4 +68,4 @@ python tg2obsidian_bot.py
 - On a continuously running computer or server, the Bot can be left running. It will then recognize speech and add notes to Obsidian in real-time.
 - If you only turn on your computer when you need to use it, run the Bot immediately when you need to receive messages in Obsidian, and close the program after receiving all messages.
 
-**Important!** The Bot can only receive messages from the last 24 hours. If more than 24 hours have passed since a message was sent before the Bot is run, that message will not be received by the Bot.
+**Important!** The Bot can only receive messages from the last 24 hours due to lifetime of [Telegram updates](https://core.telegram.org/bots/api#getting-updates). If more than 24 hours have passed since a message was sent before the Bot is run, that message will not be received by the Bot.
