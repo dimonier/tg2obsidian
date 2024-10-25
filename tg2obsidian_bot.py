@@ -192,23 +192,16 @@ async def handle_photo(message: Message):
     
     # Распознавание текста с фото
     if config.ocr:
-        try:
-            image_path = os.path.join(config.photo_path, file_name)
-            img = Image.open(image_path)
-
-            recognized_text = pytesseract.image_to_string(img, lang=ocr_languages)
-            if recognized_text.strip():
-                photo_and_caption += f'\n{recognized_text}'
-                try:
-                    await answer_message(message, recognized_text)
-                except Exception as e:
-                    await answer_message(message, f'🤷‍♂️ {e}')
-            else:
-                log_basic("No text recognized on the photo.")
-        except Exception as e:
-            error_message = f'Error during text recognition from {image_path} in {ocr_languages}: {e}'
-            log_basic(error_message)
-            await answer_message(message, f'🤷‍♂️ {error_message}')
+        image_path = os.path.join(config.photo_path, file_name)
+        recognized_text = await recognize_text_from_image(image_path, ocr_languages)
+        if recognized_text:
+            photo_and_caption += f'\n{recognized_text}'
+            try:
+                await answer_message(message, recognized_text)
+            except Exception as e:
+                await answer_message(message, f'🤷‍♂️ {e}')
+        else:
+            log_basic("No text recognized on the photo.")
 
     note.text = photo_and_caption
     save_message(note)
@@ -218,10 +211,10 @@ async def handle_photo(message: Message):
 async def handle_document(message: Message):
     if message.chat.id != config.my_chat_id: return
     file_name = unique_filename(message.document.file_name, config.photo_path)
-    log_basic(f'Received document {file_name} from @{message.from_user.username}')
+    log_basic(f'Received document {file_name} ({message.document.mime_type}) from @{message.from_user.username}')
     log_message(message)
     note = note_from_message(message)
-    print(f'Got document: {file_name}')
+    print(f'Got document: {file_name} ({message.document.mime_type})')
 
     try:
         file = await bot.get_file(message.document.file_id)
@@ -251,6 +244,17 @@ async def handle_document(message: Message):
 
         note.text = f'{file_details}\n{note_stt}'
         os.remove(file_full_path)
+    elif message.document.mime_type.split('/')[0] == 'image' and config.ocr:
+        image_path = os.path.join(config.photo_path, file_name)
+        recognized_text = await recognize_text_from_image(image_path, ocr_languages)
+        if recognized_text:
+            note.text += f'\n{recognized_text}'
+            try:
+                await answer_message(message, recognized_text)
+            except Exception as e:
+                await answer_message(message, f'🤷‍♂️ {e}')
+        else:
+            log_basic("No text recognized in the document.")
     else:
         forward_info = get_forward_info(message)
         note.text = f'{forward_info}[[{file_name}]]\n{await embed_formatting_caption(message)}'
@@ -757,6 +761,25 @@ async def embed_formatting_caption(message: Message) -> str:
         # await message.reply(f'🤷‍♂️ {e}')
         formatted_note = note
     return formatted_note
+
+async def recognize_text_from_image(image_path: str, ocr_languages: str) -> str:
+    """
+    Recognizes text from an image using OCR.
+
+    Parameters:
+    image_path (str): The path to the image file.
+    ocr_languages (str): The languages to use for OCR.
+
+    Returns:
+    str: The recognized text.
+    """
+    try:
+        img = Image.open(image_path)
+        recognized_text = pytesseract.image_to_string(img, lang=ocr_languages)
+        return recognized_text.strip()
+    except Exception as e:
+        log_basic(f'Error during text recognition from {image_path} in {ocr_languages}: {e}')
+        return ''
 
 async def stt(audio_file_path) -> str:
     log_basic(f'Starting audio recognition on {whisper_device}')
