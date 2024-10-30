@@ -588,14 +588,14 @@ def parse_entities(text: bytes,
     formatted_note = ''
 
     for entity_index, entity in enumerate(entities):
-        entity_start = entity['offset'] * 2
+        entity_start = entity.offset * 2
         if entity_start < offset:
             continue
         if entity_start > offset:
             formatted_note += from_u16(text[offset:entity_start])
-        offset = entity_end = entity_start + entity['length'] * 2
+        offset = entity_end = entity_start + entity.length * 2
 
-        format = entity['type']
+        format = entity.type
         if format == 'pre':
             pre_content = from_u16(text[entity_start:entity_end])
             content_parts = partition_string(pre_content)
@@ -611,8 +611,8 @@ def parse_entities(text: bytes,
                from_u16(text[entity_end:entity_end+2])[0] != '\n'):
                 formatted_note += '\n'
             continue
-        # parse nested entities for exampe: "**bold _italic_**
-        sub_entities = [e for e in entities[entity_index + 1:] if e['offset'] * 2 < entity_end]
+        # parse nested entities for example: "**bold _italic_**"
+        sub_entities = [e for e in entities[entity_index + 1:] if e.offset * 2 < entity_end]
         parsed_entity = parse_entities(text, sub_entities, entity_start, entity_end)
         content_parts = partition_string(parsed_entity)
         content = content_parts[1]
@@ -621,7 +621,7 @@ def parse_entities(text: bytes,
             formatted_note += content_parts[0]
             i = 0
             while i < len(content):
-                index = content.find('\n\n', i) # inline formatting acros paragraphs, need to split
+                index = content.find('\n\n', i) # inline formatting across paragraphs, need to split
                 if index == -1:
                     formatted_note += format_code[0] + content[i:] + format_code[1]
                     break
@@ -636,7 +636,7 @@ def parse_entities(text: bytes,
             formatted_note += f'{content_parts[0]}[{content}](https://t.me/{content[1:]}){content_parts[2]}'
             continue
         if format == 'text_link':
-            formatted_note += f'{content_parts[0]}[{content}]({entity["url"]}){content_parts[2]}'
+            formatted_note += f'{content_parts[0]}[{content}]({entity.url}){content_parts[2]}'
             continue
         # Not processed (makes no sense): url, hashtag, cashtag, bot_command, email, phone_number
         # Not processed (hard to visualize using Markdown): spoiler, text_mention, custom_emoji
@@ -650,14 +650,14 @@ def is_single_url(message: Message) -> bool:
     # assuming there is atleast one entity
     entities = message.entities
     url_entity = entities[0]
-    if url_entity['type'] == "url":
+    if url_entity.type == "url":
         return True
-    if url_entity['type'] != "text_link":
+    if url_entity.type != "text_link":
         return False
     # need to check nested entities
-    url_end = url_entity['offset'] + url_entity['length']
+    url_end = url_entity.offset + url_entity.length
     for e in entities[1:]:
-        if e['offset'] > url_end:
+        if e.offset > url_end:
             return False
     return True
 
