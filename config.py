@@ -1,6 +1,10 @@
 # Bot token issued by @botfather (Telegram)
 token = 'xxxxxxxx:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
 
+# The ID of the chat the bot should read. Messages from other chats will be ignored.
+# When the bot receives the /start command, it replies with the ID of the chat.
+my_chat_id = 123456789
+
 # Path to the folder where new notes should be created
 inbox_path = r'C:\your-obsidian-vault'
 
@@ -10,6 +14,9 @@ photo_path = r'C:\your-obsidian-vault\attachments'
 # If True, messages (including picture captions) will retain formatting (bold, italic, links, etc.)
 # If False, messages will be saved as plain text. This also removes inline links.
 format_messages = True
+
+# If True, messages will be deleted after processing.
+delete_messages = False
 
 #if True, callout block containing link information such as description and/or image will be created
 # for messages containing single url
@@ -71,6 +78,3 @@ negative_keywords = {'негатив', 'печал'}
 # Tag to add to the text where a keyword is detected
 negative_tag = '#негатив'
 
-# The ID of the chat the bot should read. Messages from other chats will be ignored.
-# When the bot receives the /start command, it replies with the ID of the chat.
-my_chat_id = 123456789
