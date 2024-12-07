@@ -25,8 +25,12 @@ from aiogram.enums import ParseMode
 from aiogram.methods.set_message_reaction import SetMessageReaction
 
 import config
+allowed_chats = [int(x) for x in config.allowed_chats.split(':')]
+
+# TODO: assign values of config variables to local variables using the form `my_chat_id = getattr(config, "my_chat_id", 123456789)` and change all references to these variables accordingly
 
 class CommonMiddleware(BaseMiddleware):
+
     async def __call__(self, handler, event: types.Update, data: dict):
         message = event.message
         if message:
@@ -35,10 +39,10 @@ class CommonMiddleware(BaseMiddleware):
             log_message(message)
 
             # Проверка идентификатора чата
-            if message.chat.id != config.my_chat_id:
-                await message.reply(f"I'm not configured to accept messages in this chat.\nIf you think I should do so, please set <b>my_chat_id</b> in config to <code>{message.chat.id}</code>")
+            if message.chat.id not in allowed_chats:
+                await message.reply(f"I'm not configured to accept messages in this chat.\nIf you think I should do so, please add <code>{message.chat.id}</code> to <b>allowed_chats</b> in config.")
                 return
-        
+
         try:
             result = await handler(event, data)
             if 'delete_messages' in dir(config) and config.delete_messages:
@@ -57,11 +61,13 @@ bot = Bot(token = config.token, parse_mode=ParseMode.HTML)
 # router = Router()
 dp = Dispatcher()
 dp.update.middleware(CommonMiddleware())  # Регистрация middleware
+
+
 class Note:
     def __init__(self,
                  text = "",
                  date = dt.now().strftime('%Y-%m-%d'),
-                 time = dt.now().strftime('%H:%M:%S')):
+                 time = dt.now().strftime('%H:%M:%S')) -> None:
         self.text = text
         self.date = date
         self.time = time
@@ -90,14 +96,14 @@ if config.recognize_voice:
     import torch
     import whisper
     import gc
-    
+
     whisper_device = getattr(config, 'whisper_device', 'cpu')
-    
+
     if whisper_device == 'cpu':
         torch.cuda.is_available = lambda : False
-    
+
     model = whisper.load_model(config.whisper_model)
-    
+
     if whisper_device == 'cuda' and torch.cuda.is_available():
         model = model.to('cuda')
     else:
@@ -189,6 +195,7 @@ async def handle_audio(message: Message):
 @dp.message(F.photo)
 async def handle_photo(message: Message):
     log_basic(f'Received photo from @{message.from_user.username}')
+
     note = note_from_message(message)
     photo = message.photo[-1]
     file_name = unique_indexed_filename(create_media_file_name(message, 'pic', 'jpg'), config.photo_path) # or photo.file_id + '.jpg'
@@ -199,7 +206,7 @@ async def handle_photo(message: Message):
 
     forward_info = get_forward_info(message)
     photo_and_caption = f'{forward_info}![[{file_name}]]\n{await embed_formatting_caption(message)}'
-    
+
     # Распознавание текста с фото
     if config.ocr:
         image_path = os.path.join(config.photo_path, file_name)
@@ -394,6 +401,7 @@ def get_forward_info(m: Message) -> str:
             post = f'[message](https://t.me/c/{chat_id}/{msg_id})'
 
     if m.forward_from:
+        
         forwarded = True
         real_name = ''
         if m.forward_from.first_name:
@@ -420,7 +428,7 @@ def get_forward_info(m: Message) -> str:
 
 def log_message(message):
     # Saving of the whole message into the incoming message log just in case
-    if debug_log:
+    if debug_log:        
         curr_date = dt.now().strftime('%Y-%m-%d')
         curr_time = dt.now().strftime('%H:%M:%S')
         file_name = 'messages-' + curr_date + '.txt'
@@ -437,8 +445,8 @@ def get_note_file_name_parts(curr_date):
 
 def get_note_name(curr_date) -> str:
     date_parts = curr_date.split('-')
-    year, month, day = date_parts[0], date_parts[1], date_parts[2]
-    
+    year, month, day = date_parts[0], date_parts[1], date_parts[2] # type: ignore
+
     note_name = config.note_name_template.format(year=year, month=month, day=day)
     return os.path.join(config.inbox_path, f'{note_name}.md')
 
@@ -447,12 +455,12 @@ def create_media_file_name(message: Message, suffix = 'media', ext = 'jpg') -> s
     curr_date = get_curr_date()
     date_parts = curr_date.split('-')
     year, month, day = date_parts[0], date_parts[1], date_parts[2]
-    
+
     note_name = config.note_name_template.format(year=year, month=month, day=day)
-    
+
     # Remove unnecessary characters from the file name
     note_name = re.sub(r'[^\w\-_\.]', '_', note_name)
-    
+
     return f'{curr_date}_{note_name}_{suffix}.{ext}'
 
 
@@ -575,17 +583,17 @@ def parse_entities(text: bytes,
             while i < len(content):
                 index = content.find('\n\n', i) # inline formatting across paragraphs, need to split
                 if index == -1:
-                    formatted_note += format_code[0] + content[i:] + format_code[1]
+                    formatted_note += format_code[0] + content[i:] + format_code[1] # type: ignore
                     break
-                formatted_note += format_code[0] + content[i:index] + format_code[1]
+                formatted_note += format_code[0] + content[i:index] + format_code[1] # type: ignore
                 i = index
-                while i < len(content) and content[i] == '\n':
+                while i < len(content) and content[i] == '\n': # type: ignore
                     formatted_note += '\n'
                     i += 1
             formatted_note += content_parts[2]
             continue
         if format == 'mention':
-            formatted_note += f'{content_parts[0]}[{content}](https://t.me/{content[1:]}){content_parts[2]}'
+            formatted_note += f'{content_parts[0]}[{content}](https://t.me/{content[1:]}){content_parts[2]}' # type: ignore
             continue
         if format == 'text_link':
             formatted_note += f'{content_parts[0]}[{content}]({entity.url}){content_parts[2]}'
@@ -735,13 +743,13 @@ async def recognize_text_from_image(image_path: str, ocr_languages: str) -> str:
 
 async def stt(audio_file_path) -> str:
     log_basic(f'Starting audio recognition on {whisper_device}')
-    
+
     result = model.transcribe(audio_file_path, verbose=False, language='ru')
-    
+
     if whisper_device == 'cuda' and torch.cuda.is_available():
         # Clear GPU memory
         torch.cuda.empty_cache()
-    
+
     if hasattr(result['segments'], '__iter__'):
         rawtext = ' '.join([segment['text'].strip() for segment in result['segments']])
         rawtext = re.sub(" +", " ", rawtext)

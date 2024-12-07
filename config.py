@@ -1,9 +1,11 @@
 # Bot token issued by @botfather (Telegram)
 token = 'xxxxxxxx:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
 
-# The ID of the chat the bot should read. Messages from other chats will be ignored.
-# When the bot receives the /start command, it replies with the ID of the chat.
-my_chat_id = 123456789
+# The IDs of chats the bot should read, separated by colons. Messages from other chats will be ignored.
+# A single chat can be specified like '123456789'.
+# Multiple chats can be specified like '123456789:987654321:111222333'.
+# When the bot receives the /start command in any chat, it replies with that chat's ID which can be added here.
+allowed_chats = '123456789:987654321'
 
 # Path to the folder where new notes should be created
 inbox_path = r'C:\your-obsidian-vault'

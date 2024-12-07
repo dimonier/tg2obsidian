@@ -135,3 +135,4 @@ tele_bot.py
 telegram_bot.py
 waiter_sync.py
 tg2obsidian.code-workspace
+static-analysis.datadog.yml
