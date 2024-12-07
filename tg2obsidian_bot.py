@@ -23,6 +23,7 @@ from aiogram.types import ContentType, File, Message, MessageEntity, Poll, PollA
 from aiogram.types.reaction_type_emoji import ReactionTypeEmoji
 from aiogram.enums import ParseMode
 from aiogram.methods.set_message_reaction import SetMessageReaction
+from database import set_notes_folder, get_notes_folder
 
 import config
 allowed_chats = [int(x) for x in config.allowed_chats.split(':')]
@@ -43,6 +44,9 @@ class CommonMiddleware(BaseMiddleware):
                 await message.reply(f"I'm not configured to accept messages in this chat.\nIf you think I should do so, please add <code>{message.chat.id}</code> to <b>allowed_chats</b> in config.")
                 return
 
+            notes_folder = get_notes_folder(message.chat.id)
+            note = note_from_message(message, notes_folder)
+            data["note"] = note
         try:
             result = await handler(event, data)
             if 'delete_messages' in dir(config) and config.delete_messages:
@@ -67,10 +71,13 @@ class Note:
     def __init__(self,
                  text = "",
                  date = dt.now().strftime('%Y-%m-%d'),
-                 time = dt.now().strftime('%H:%M:%S')) -> None:
+                 time = dt.now().strftime('%H:%M:%S'),
+                 notes_folder = None
+                 ) -> None:
         self.text = text
         self.date = date
         self.time = time
+        self.notes_folder = notes_folder
 
 basic_log = False
 debug_log = False
@@ -113,30 +120,62 @@ if config.recognize_voice:
 
 # Handlers
 @dp.message(Command("start"))
-async def send_welcome(message: types.Message):
+async def command_start(message: types.Message):
     log_basic(
         f"Starting chat with the user @{message.from_user.username} ({message.from_user.first_name} {message.from_user.last_name}, user_id = {message.from_user.id}), chat_id = {message.chat.id} ({message.chat.title})"
     )
     reply_text = f"Hello {message.from_user.full_name}!\n\nI`m a private bot, I save messages from a private Telegram group to Obsidian inbox.\n\nYour Id: {message.from_user.id}\nThis chat Id: {message.chat.id}\n"
     await message.reply(reply_text)
 
+@dp.message(Command("set_folder"))
+async def command_set_folder(message: types.Message, note: Note):
+    """Set the folder for saving notes for the current chat"""
+    log_basic(f'Received set_folder command for chat {message.chat.id} from @{message.from_user.username}')
+    
+    current_notes_folder = note.notes_folder
+    await answer_message(message, f"""
+Base notes folder: <code>{config.inbox_path}</code>
+Your current notes folder: <code>{current_notes_folder}</code>
+        """)
+
+    # Get folder path from command arguments
+    args = message.text.split(maxsplit=1)
+    if len(args) < 2:
+        relative_folder_path = ""
+    else:
+        relative_folder_path = args[1].strip()
+    
+    # Validate folder path
+    folder_path = os.path.join(config.inbox_path, relative_folder_path)
+    
+    try:
+        os.makedirs(folder_path, exist_ok=True)
+    except Exception as e:
+        await answer_message(message, f"Error creating folder <code>{folder_path}</code>: {e}")
+        return
+        
+    # Save to database
+    result = set_notes_folder(message.chat.id, relative_folder_path)
+    await answer_message(message, result)
+
 @dp.message(Command("help"))
-async def help(message: types.Message):
-    reply_text = '''/start - start Bot
-    /help - show this help
-    a text or picture message - to be passed into Obsidian inbox
-    an audio message - to be recognized and passed into Obsidian inbox as text
-    '''
-    await message.reply(reply_text)
+async def command_help(message: types.Message, note: Note):
+    reply_text = '''
+/start - start Bot
+/help - show this help
+/set_folder - set or reset custom relative folder for saving notes
+    usage: <code>/set_folder path/to/folder</code>
+    <code>/set_folder</code> without path resets custom folder to the default
+text, media, picture message of other kinds of messages - to be passed into Obsidian inbox. Text may be added according to text recognition settings in config
+'''
+    await answer_message(message, reply_text)
 
 @dp.message(F.voice)
-async def handle_voice_message(message: Message):
+async def handle_voice_message(message: Message, note: Note):
     log_basic(f'Received voice message from @{message.from_user.username}')
     if not config.recognize_voice:
         log_basic(f'Voice recognition is turned OFF')
         return
-
-    note = note_from_message(message)
 
     path = os.path.dirname(__file__)
     voice_file = await bot.get_file(message.voice.file_id)
@@ -159,12 +198,12 @@ async def handle_voice_message(message: Message):
     os.remove(file_full_path)
 
 @dp.message(F.audio)
-async def handle_audio(message: Message):
+async def handle_audio(message: Message, note: Note):
     log_basic(f'Received audio file from @{message.from_user.username}')
     if not config.recognize_voice:
         log_basic(f'Voice recognition is turned OFF')
         return
-    note = note_from_message(message)
+
     try:
         audio = await message.audio.get_file()
     except Exception as e:
@@ -193,10 +232,9 @@ async def handle_audio(message: Message):
     os.remove(file_full_path)
 
 @dp.message(F.photo)
-async def handle_photo(message: Message):
+async def handle_photo(message: Message, note: Note):
     log_basic(f'Received photo from @{message.from_user.username}')
 
-    note = note_from_message(message)
     photo = message.photo[-1]
     file_name = unique_indexed_filename(create_media_file_name(message, 'pic', 'jpg'), config.photo_path) # or photo.file_id + '.jpg'
     print(f'Got photo: {file_name}')
@@ -224,10 +262,9 @@ async def handle_photo(message: Message):
     save_message(note)
 
 @dp.message(F.document)
-async def handle_document(message: Message):
+async def handle_document(message: Message, note: Note):
     file_name = unique_filename(message.document.file_name, config.photo_path)
     log_basic(f'Received document {file_name} ({message.document.mime_type}) from @{message.from_user.username}')
-    note = note_from_message(message)
     print(f'Got document: {file_name} ({message.document.mime_type})')
 
     try:
@@ -274,30 +311,29 @@ async def handle_document(message: Message):
     save_message(note)
 
 @dp.message(F.contact)
-async def handle_contact(message: Message):
+async def handle_contact(message: Message, note: Note):
     log_basic(f'Received contact from @{message.from_user.username}')
-    note = note_from_message(message)
+
     print(f'Got contact')
     note.text = await get_contact_data(message)
     save_message(note)
 
 @dp.message(F.location)
-async def handle_location(message: Message):
+async def handle_location(message: Message, note: Note):
     log_basic(f'Received location from @{message.from_user.username}')
     print(f'Got location')
-    note = note_from_message(message)
+
     note.text = get_location_note(message)
     save_message(note)
 
 @dp.message(F.animation)
-async def handle_animation(message: Message):
+async def handle_animation(message: Message, note: Note):
     if message.document.file_name:
         file_name = unique_filename(message.document.file_name, config.photo_path)
     else:
         file_name = unique_indexed_filename(create_media_file_name(message, 'animation', 'mp4'), config.photo_path)
     log_basic(f'Received animation {file_name} from @{message.from_user.username}')
     print(f'Got animation: {file_name}')
-    note = note_from_message(message)
 
     file = await bot.get_file(message.document.file_id)
     await handle_file(file=file, file_name=file_name, path=config.photo_path)
@@ -307,14 +343,13 @@ async def handle_animation(message: Message):
     save_message(note)
 
 @dp.message(F.video)
-async def handle_video(message: Message):
+async def handle_video(message: Message, note: Note):
     if message.video.file_name:
         file_name = unique_filename(message.video.file_name, config.photo_path)
     else:
         file_name = unique_indexed_filename(create_media_file_name(message, 'video', 'mp4'), config.photo_path)
     log_basic(f'Received video {file_name} from @{message.from_user.username}')
     print(f'Got video: {file_name}')
-    note = note_from_message(message)
 
     file = await bot.get_file(message.video.file_id)
 
@@ -324,11 +359,10 @@ async def handle_video(message: Message):
     save_message(note)
 
 @dp.message(F.video_note)
-async def handle_video_note(message: Message):
+async def handle_video_note(message: Message, note: Note):
     file_name = unique_indexed_filename(create_media_file_name(message.video_note, 'video_note', 'mp4'), config.photo_path)
     log_basic(f'Received video note from @{message.from_user.username}')
     print(f'Got video note: {file_name}')
-    note = note_from_message(message)
 
     file = await bot.get_file(message.video_note.file_id)
 
@@ -338,10 +372,9 @@ async def handle_video_note(message: Message):
     save_message(note)
 
 @dp.message()
-async def process_message(message: types.Message):
+async def process_message(message: types.Message, note: Note):
     log_basic(f'Received a message from @{message.from_user.username}')
 
-    note = note_from_message(message)
     forward_info = get_forward_info(message)
 
     message_body = await embed_formatting(message)
@@ -352,7 +385,6 @@ async def process_message(message: types.Message):
             note.text += f'\n![{message.link_preview_options.url}]({message.link_preview_options.url})\n'
 
     save_message(note)
-
 
 # Functions
 
@@ -443,12 +475,12 @@ def get_note_file_name_parts(curr_date):
     filename_part2 = curr_date if 'note_date' in dir(config) and config.note_date is True else ''
     return [filename_part1, filename_part2, filename_part3]
 
-def get_note_name(curr_date) -> str:
+def get_note_name(curr_date, notes_folder) -> str:
     date_parts = curr_date.split('-')
     year, month, day = date_parts[0], date_parts[1], date_parts[2] # type: ignore
 
     note_name = config.note_name_template.format(year=year, month=month, day=day)
-    return os.path.join(config.inbox_path, f'{note_name}.md')
+    return os.path.join(notes_folder, f'{note_name}.md')
 
 
 def create_media_file_name(message: Message, suffix = 'media', ext = 'jpg') -> str:
@@ -483,6 +515,10 @@ def create_link_info() -> bool:
 def save_message(note: Note) -> None:
     curr_date = note.date
     curr_time = note.time
+    
+    relative_folder_path = note.notes_folder
+    folder_path = os.path.join(config.inbox_path, relative_folder_path)
+    
     if one_line_note():
         # Replace all line breaks with spaces and make simple time stamp
         note_body = note.text.replace('\n', ' ')
@@ -491,7 +527,7 @@ def save_message(note: Note) -> None:
         # Keep line breaks and add a header with a time stamp
         note_body = check_if_task(check_if_negative(note.text))
         note_text = f'#### [[{curr_date}]] {curr_time}\n{note_body}\n\n'
-    with open(get_note_name(curr_date), 'a', encoding='UTF-8') as f:
+    with open(get_note_name(curr_date, folder_path), 'a', encoding='UTF-8') as f:
         f.write(note_text)
 
 def check_if_task(note_body) -> str:
@@ -750,8 +786,8 @@ async def stt(audio_file_path) -> str:
         # Clear GPU memory
         torch.cuda.empty_cache()
 
-    if hasattr(result['segments'], '__iter__'):
-        rawtext = ' '.join([segment['text'].strip() for segment in result['segments']])
+    if hasattr(result['segments'], '__iter__'): # type: ignore
+        rawtext = ' '.join([segment['text'].strip() for segment in result['segments']]) # type: ignore
         rawtext = re.sub(" +", " ", rawtext)
 
         alltext = re.sub(r"([\.\!\?]) ", "\\1\n", rawtext)
@@ -930,12 +966,12 @@ def bold(text: str) -> str:
         return text
 
 
-def note_from_message(message: Message):
+def note_from_message(message: Message, notes_folder: str):
     local_tz = timezone(config.time_zone)
     message_date = message.date.astimezone(local_tz)
     msg_date = message_date.strftime('%Y-%m-%d')
     msg_time = message_date.strftime('%H:%M:%S')
-    note = Note(date=msg_date, time=msg_time)
+    note = Note(date=msg_date, time=msg_time, notes_folder=notes_folder)
     return note
 
 
