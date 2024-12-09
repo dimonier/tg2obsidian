@@ -14,6 +14,8 @@ This readme is also available [in Russian](README.ru.md).
 
 ## Features
 
+- One or more Teleram users could send messages to the Obsidian vault.
+- Each user could use custom folder to store notes coming from Teleram.
 - All messages are grouped by date — one note per day/month/year (according to the note name template) — or stored in a single note.
 - Each message in a note has a header with a timestamp.
 - Depending on the settings, message formatting is either preserved or ignored.
@@ -44,7 +46,7 @@ pip install -r requirements.txt
 4. Insert the token received from `@botfather` into the corresponding variable in the `config.py` file and modify the other parameters in `config.py` as required.
 5. (Optional) Add the bot created above to a private Telegram group and make it an administrator so that it can read messages.
 6. Run the bot (see the "Usage" section)
-7. Send the `/start` command to your bot on Telegram. In response, the bot will tell you your id. Insert it into the `my_chat_id` parameter in the `config.py` file.
+7. Send the `/start` command to your bot on Telegram. In response, the bot will tell you your id. Insert it into the `allowed_chats` parameter in the `config.py` file. Separate more than one chat id with a colon.
 
 ### If Text Recognition on Images is Required
 
