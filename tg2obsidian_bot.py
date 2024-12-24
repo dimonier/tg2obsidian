@@ -23,6 +23,7 @@ from aiogram.types import ContentType, File, Message, MessageEntity, Poll, PollA
 from aiogram.types.reaction_type_emoji import ReactionTypeEmoji
 from aiogram.enums import ParseMode
 from aiogram.methods.set_message_reaction import SetMessageReaction
+from aiogram.utils.text_decorations import html_decoration
 from database import set_notes_folder, get_notes_folder
 
 import config
@@ -250,9 +251,10 @@ async def handle_photo(message: Message, note: Note):
         image_path = os.path.join(config.photo_path, file_name)
         recognized_text = await recognize_text_from_image(image_path, ocr_languages)
         if recognized_text:
+            recognized_text_safe = html_decoration.quote(recognized_text)
             photo_and_caption += f'\n{recognized_text}'
             try:
-                await answer_message(message, recognized_text)
+                await answer_message(message, recognized_text_safe)
             except Exception as e:
                 await answer_message(message, f'🤷‍♂️ {e}')
         else:
@@ -297,9 +299,10 @@ async def handle_document(message: Message, note: Note):
         image_path = os.path.join(config.photo_path, file_name)
         recognized_text = await recognize_text_from_image(image_path, ocr_languages)
         if recognized_text:
+            recognized_text_safe = html_decoration.quote(recognized_text)
             note.text += f'\n{recognized_text}'
             try:
-                await answer_message(message, recognized_text)
+                await answer_message(message, recognized_text_safe)
             except Exception as e:
                 await answer_message(message, f'🤷‍♂️ {e}')
         else:
