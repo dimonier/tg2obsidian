@@ -29,6 +29,9 @@ from database import set_notes_folder, get_notes_folder
 import config
 allowed_chats = [int(x) for x in config.allowed_chats.split(':')]
 
+# Для группировки отправленных вместе сообщений
+last_message_times = {}
+
 # TODO: assign values of config variables to local variables using the form `my_chat_id = getattr(config, "my_chat_id", 123456789)` and change all references to these variables accordingly
 
 class CommonMiddleware(BaseMiddleware):
@@ -69,16 +72,13 @@ dp.update.middleware(CommonMiddleware())  # Регистрация middleware
 
 
 class Note:
-    def __init__(self,
-                 text = "",
-                 date = dt.now().strftime('%Y-%m-%d'),
-                 time = dt.now().strftime('%H:%M:%S'),
-                 notes_folder = None
-                 ) -> None:
-        self.text = text
+    """Class to represent a note with its metadata"""
+    def __init__(self, date: str, time: str, notes_folder: str, message: Message | None = None):
         self.date = date
         self.time = time
         self.notes_folder = notes_folder
+        self.message = message
+        self.text = ""
 
 basic_log = False
 debug_log = False
@@ -118,6 +118,28 @@ if config.recognize_voice:
         model = model.to('cpu')
 
     print(f'Prepared for speech-to-text recognition on {whisper_device}')
+
+def should_add_timestamp(message: Message) -> bool:
+    """
+    Check if we should add timestamp for the message based on time difference with previous message.
+    
+    Args:
+        message (Message): Current message
+        
+    Returns:
+        bool: True if timestamp should be added, False otherwise
+    """
+    chat_id = message.chat.id
+    current_time = message.date
+    
+    if chat_id not in last_message_times:
+        last_message_times[chat_id] = current_time
+        return True
+        
+    time_diff = (current_time - last_message_times[chat_id]).total_seconds()
+    last_message_times[chat_id] = current_time
+    
+    return time_diff >= config.message_timestamp_interval
 
 # Handlers
 @dp.message(Command("start"))
@@ -515,6 +537,7 @@ def format_messages() -> bool:
 def create_link_info() -> bool:
     return False if 'create_link_info' not in dir(config) else config.create_link_info
 
+
 def save_message(note: Note) -> None:
     curr_date = note.date
     curr_time = note.time
@@ -529,7 +552,11 @@ def save_message(note: Note) -> None:
     else:
         # Keep line breaks and add a header with a time stamp
         note_body = check_if_task(check_if_negative(note.text))
-        note_text = f'#### [[{curr_date}]] {curr_time}\n{note_body}\n\n'
+        if hasattr(note, 'message') and not should_add_timestamp(note.message):
+            note_text = f'{note_body}\n\n'
+        else:
+            note_text = f'#### [[{curr_date}]] {curr_time}\n{note_body}\n\n'
+
     with open(get_note_name(curr_date, folder_path), 'a', encoding='UTF-8') as f:
         f.write(note_text)
 
@@ -969,13 +996,22 @@ def bold(text: str) -> str:
         return text
 
 
-def note_from_message(message: Message, notes_folder: str):
+def note_from_message(message: Message, notes_folder: str) -> Note:
+    """
+    Create Note object from Telegram message
+    
+    Args:
+        message (Message): Telegram message
+        notes_folder (str): Folder path for saving notes
+        
+    Returns:
+        Note: Note object with message metadata
+    """
     local_tz = timezone(config.time_zone)
     message_date = message.date.astimezone(local_tz)
     msg_date = message_date.strftime('%Y-%m-%d')
     msg_time = message_date.strftime('%H:%M:%S')
-    note = Note(date=msg_date, time=msg_time, notes_folder=notes_folder)
-    return note
+    return Note(date=msg_date, time=msg_time, notes_folder=notes_folder, message=message)
 
 
 async def main() -> None:

@@ -17,6 +17,9 @@ photo_path = r'C:\your-obsidian-vault\attachments'
 # If False, messages will be saved as plain text. This also removes inline links.
 format_messages = True
 
+# Minimum time interval (in seconds) between messages to add timestamp
+message_timestamp_interval = 5
+
 # If True, messages will be deleted after processing.
 delete_messages = False
 
