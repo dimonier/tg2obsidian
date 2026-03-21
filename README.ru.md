@@ -49,6 +49,31 @@ pip install -r requirements.txt
 6. Запустите бота (см. раздел "Использование")
 7. Отправьте команду `/start` вашему боту в Telegram. В ответе бот сообщит ваш id. Вставьте его в параметр `allowed_chats` в файле `config.py`. Несколько идентификаторов разделяйте двоеточием.
 
+### Необязательно: proxy для Telegram
+
+Если в вашей сети режется прямой доступ к Telegram, Бот может подключаться к Telegram Bot API через proxy.
+
+Добавьте настройки proxy в `config.py`:
+
+```python
+telegram_proxy_url = "socks5h://your-proxy-host:1080"
+telegram_proxy_login = ""
+telegram_proxy_password = ""
+```
+
+Примечания:
+
+- Оставьте `telegram_proxy_url` пустым, если хотите использовать прямое подключение.
+- Поддерживаются форматы `socks5h://...`, `socks5://...`, `socks4a://...`, `socks4://...` и `http://...`.
+- Если proxy требует авторизацию, заполните `telegram_proxy_login` и `telegram_proxy_password`.
+- Proxy используется только для запросов к Telegram Bot API и для скачивания файлов из Telegram. Обычные внешние URL для preview через proxy не ходят.
+- Для поддержки proxy нужен пакет `aiohttp-socks`, он уже добавлен в `requirements.txt`.
+
+#### Как установить VPN и proxy
+
+1. [Как установить полностью настроенный VPN на VPS](https://github.com/ClusterM/vpn-how-to)
+2. [Как настроить SOCKS5 proxy на 3x-ui](SOCKS5-proxy-howto.md)
+
 ### Если требуется распознавание текста на картинках
 
 1. Установите [Tesseract](https://github.com/tesseract-ocr/tessdoc) и добавьте путь к исполняемому файлу (в Windows - tesseract.exe) в переменную окружения path.

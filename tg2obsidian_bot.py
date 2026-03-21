@@ -14,10 +14,12 @@ import warnings
 
 from pathlib import Path
 from datetime import datetime as dt, timedelta
+from urllib.parse import quote, urlsplit, urlunsplit
 from bs4 import BeautifulSoup
 from pytz import timezone
 
 from aiogram import Bot, Dispatcher, F, types, BaseMiddleware
+from aiogram.client.session.aiohttp import AiohttpSession
 from aiogram.filters import Command
 from aiogram.types import File, Message, MessageEntity
 from aiogram.enums import ParseMode
@@ -35,6 +37,66 @@ last_message_times = {}
 
 # Игнорируем предупреждение о FP16 на CPU
 warnings.filterwarnings("ignore", message="FP16 is not supported on CPU")
+
+
+def build_telegram_proxy_url() -> str | None:
+    """Build a proxy URL for Telegram requests from config values."""
+    proxy_url = str(getattr(config, "telegram_proxy_url", "")).strip()
+    if not proxy_url:
+        return None
+
+    parts = urlsplit(proxy_url)
+    if not parts.scheme or not parts.hostname:
+        return proxy_url
+
+    scheme = parts.scheme.lower()
+    if scheme == "socks5h":
+        scheme = "socks5"
+    elif scheme == "socks4a":
+        scheme = "socks4"
+
+    login = str(getattr(config, "telegram_proxy_login", "")).strip()
+    password = str(getattr(config, "telegram_proxy_password", "")).strip()
+    if not login:
+        return urlunsplit((scheme, parts.netloc, parts.path, parts.query, parts.fragment))
+
+    hostname = parts.hostname
+    if ":" in hostname and not hostname.startswith("["):
+        hostname = f"[{hostname}]"
+
+    userinfo = quote(login, safe="")
+    if password:
+        userinfo += f":{quote(password, safe='')}"
+
+    netloc = f"{userinfo}@{hostname}"
+    if parts.port:
+        netloc += f":{parts.port}"
+
+    return urlunsplit((scheme, netloc, parts.path, parts.query, parts.fragment))
+
+
+def create_bot_session() -> AiohttpSession | None:
+    """Create an aiogram HTTP session with proxy support when configured."""
+    proxy_url = build_telegram_proxy_url()
+    if not proxy_url:
+        return None
+    return AiohttpSession(proxy=proxy_url)
+
+
+def create_telegram_http_session() -> aiohttp.ClientSession:
+    """Create an aiohttp session for direct Telegram file downloads."""
+    proxy_url = build_telegram_proxy_url()
+    if not proxy_url:
+        return aiohttp.ClientSession()
+
+    try:
+        from aiohttp_socks import ProxyConnector
+    except ImportError as exc:
+        raise RuntimeError(
+            "Proxy support requires aiohttp-socks to be installed."
+        ) from exc
+
+    return aiohttp.ClientSession(connector=ProxyConnector.from_url(proxy_url))
 
 class CommonMiddleware(BaseMiddleware):
 
@@ -72,7 +134,12 @@ class CommonMiddleware(BaseMiddleware):
             await answer_message(message, f'🤷‍♂️ {e}')
             return
 
-bot = Bot(token=config.token, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+bot_session = create_bot_session()
+bot = Bot(
+    token=config.token,
+    default=DefaultBotProperties(parse_mode=ParseMode.HTML),
+    session=bot_session,
+)
 # router = Router()
 dp = Dispatcher()
 dp.update.middleware(CommonMiddleware())  # Регистрация middleware
@@ -493,7 +560,7 @@ async def handle_file(file: File, file_name: str, path: str):
     """
     Path(f"{path}").mkdir(parents=True, exist_ok=True)
     destination = f"{path}/{file_name}"
-    async with aiohttp.ClientSession() as session:
+    async with create_telegram_http_session() as session:
         async with session.get(f"https://api.telegram.org/file/bot{config.token}/{file.file_path}") as resp:
             if resp.status == 200:
                 f = await aiofiles.open(destination, mode='wb')
