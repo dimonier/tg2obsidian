@@ -49,6 +49,31 @@ pip install -r requirements.txt
 6. Run the bot (see the "Usage" section)
 7. Send the `/start` command to your bot on Telegram. In response, the bot will tell you your id. Insert it into the `allowed_chats` parameter in the `config.py` file. Separate more than one chat id with a colon.
 
+### Optional: Telegram Proxy
+
+If direct access to Telegram is blocked in your network, the Bot can connect to the Telegram Bot API through a proxy.
+
+Add the proxy settings to `config.py`:
+
+```python
+telegram_proxy_url = "socks5h://your-proxy-host:1080"
+telegram_proxy_login = ""
+telegram_proxy_password = ""
+```
+
+Notes:
+
+- Leave `telegram_proxy_url` empty to keep using a direct connection.
+- Supported proxy URL formats are `socks5h://...`, `socks5://...`, `socks4a://...`, `socks4://...`, and `http://...`.
+- If your proxy requires authentication, fill `telegram_proxy_login` and `telegram_proxy_password`.
+- The proxy is used only for Telegram Bot API requests and Telegram file downloads. Regular external URL previews are not routed through it.
+- Proxy support requires the `aiohttp-socks` package, which is already included in `requirements.txt`.
+
+#### Proxy / VPN how-tos
+
+1. [How to set up full fledged VPN on VPS](https://github.com/ClusterM/vpn-how-to)
+2. [How to set up SOCKS5 proxy on 3x-ui](SOCKS5-proxy-howto.md)
+
 ### If Text Recognition on Images is Required
 
 1. Install [Tesseract](https://github.com/tesseract-ocr/tessdoc) and add the path to the executable file (tesseract.exe on Windows) to the system's PATH environment variable.

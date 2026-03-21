@@ -2,6 +2,7 @@ pathlib
 datetime
 asyncio
 aiogram == 3.3.0
+aiohttp-socks == 0.8.4
 bs4
 torch
 torchvision

@@ -1,6 +1,18 @@
 # Bot token issued by @botfather (Telegram)
 token = 'xxxxxxxx:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
 
+# Optional proxy for Telegram Bot API requests.
+# Leave empty to use a direct connection.
+# Examples:
+# telegram_proxy_url = "socks5h://8.8.8.8:1080"
+# telegram_proxy_url = "http://proxy-host:3128"
+telegram_proxy_url = ""
+
+# Optional proxy credentials.
+# Leave empty if the proxy does not require authentication.
+telegram_proxy_login = ""
+telegram_proxy_password = ""
+
 # The IDs of chats the bot should read, separated by colons. Messages from other chats will be ignored.
 # A single chat can be specified like '123456789'.
 # Multiple chats can be specified like '123456789:987654321:111222333'.
